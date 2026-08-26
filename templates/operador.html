@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChargeGrid Intelligence — Operador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E8001C;--green:#00C896;--orange:#F5A623;
+  --bg:#0D1117;--surface:#111520;--surface2:#0A0C10;
+  --border:#1E2436;--border2:#2D3748;
+  --text:#E8EAF0;--muted:#6B7280;--subtle:#4A5568;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px}
+
+/* TOPBAR */
+.topbar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-img-wrap{display:flex;align-items:center;height:44px;flex-shrink:0}
+.logo-img{height:32px;width:auto}
+.logo-name{font-size:15px;font-weight:500;color:var(--text)}
+.logo-sub{font-size:11px;color:var(--subtle);font-family:var(--mono)}
+.nav{display:flex;gap:2px;margin-left:8px}
+.nav-btn{padding:7px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-family:var(--sans);background:transparent;color:var(--muted);transition:all .15s}
+.nav-btn.active{background:var(--surface);color:var(--red);font-weight:500}
+.nav-btn:hover:not(.active){color:var(--text);background:var(--surface)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--subtle);font-family:var(--mono)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* LAYOUT */
+.body{display:grid;grid-template-columns:1fr 260px;min-height:calc(100vh - 52px)}
+.main{padding:16px;border-right:1px solid var(--border)}
+.sidebar{padding:16px;background:var(--surface2)}
+.label{font-size:12px;color:var(--subtle);font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+
+/* GAUGE */
+.gauge-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:20px}
+.gauge-info{flex:1}
+.gauge-title{font-size:13px;color:var(--muted);font-family:var(--mono);margin-bottom:4px}
+.gauge-val{font-size:30px;font-weight:500;font-family:var(--mono);line-height:1}
+.gauge-val span{font-size:15px;color:var(--muted);font-weight:400}
+.gauge-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.gauge-sub b{color:var(--orange)}
+.gauge-msg{font-size:12px;margin-top:8px;padding:4px 10px;border-radius:4px;display:inline-block}
+.msg-ok{background:#0A1A0F;color:var(--green);border:1px solid #0F3320}
+.msg-alerta{background:#1A1209;color:var(--orange);border:1px solid #3D2B09}
+.msg-critico{background:#1A0505;color:var(--red);border:1px solid #3D0909}
+.gauge-meta{text-align:right;font-family:var(--mono);font-size:11px;color:var(--subtle)}
+.gauge-meta span{display:block;margin-top:3px}
+
+/* CONNECTOR GRID */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;position:relative;overflow:hidden;transition:border-color .2s}
+.card-accent{position:absolute;top:0;left:0;width:4px;height:100%;border-radius:2px 0 0 2px}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.card-id{font-size:12px;font-family:var(--mono);color:var(--subtle);font-weight:500}
+.badge{font-size:10px;padding:3px 8px;border-radius:3px;font-weight:500}
+.badge-active{background:#0A2E1E;color:var(--green)}
+.badge-idle{background:#1A1F2E;color:var(--subtle)}
+.badge-alerta{background:#1A1209;color:var(--orange)}
+.badge-falha{background:#1A0505;color:var(--red)}
+.badge-handshake{background:#0A1A2E;color:#4A90D9}
+.card-power{font-size:22px;font-weight:500;font-family:var(--mono);line-height:1}
+.card-power span{font-size:10px;color:var(--muted);font-weight:400}
+.card-bar{height:3px;background:var(--border2);border-radius:2px;margin:7px 0}
+.card-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.card-meta{font-size:11px;color:var(--subtle);font-family:var(--mono);line-height:1.6}
+.card-meta b{color:#8892A4}
+
+/* RECOMENDAÇÕES */
+.rec-list{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px}
+.rec-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.rec-item:last-child{border-bottom:none;padding-bottom:0}
+.rec-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.rec-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px}
+.rec-text{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* SIDEBAR */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px}
+.metric-label{font-size:11px;color:var(--subtle);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.metric-val{font-size:20px;font-weight:500;font-family:var(--mono)}
+.metric-sub{font-size:10px;color:var(--subtle);margin-top:2px}
+.tariff-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px}
+.tariff-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.tariff-row:last-child{border-bottom:none}
+.tariff-row.current{background:var(--border);margin:0 -8px;padding:5px 8px;border-radius:4px;border:none}
+.t-time{font-family:var(--mono);color:var(--muted)}
+.t-val{font-family:var(--mono);font-weight:500}
+.t-tag{font-size:10px;padding:2px 7px;border-radius:2px}
+.tag-pico{background:#1A0505;color:var(--red)}
+.tag-norm{background:var(--border);color:var(--subtle)}
+.tag-fora{background:#0A2E1E;color:var(--green)}
+.tag-red{background:#1A1209;color:var(--orange)}
+.chart-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px}
+.chart-bars{display:flex;align-items:flex-end;gap:3px;height:48px;margin-top:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center}
+.bar{width:100%;border-radius:2px 2px 0 0;min-height:3px;transition:height .3s}
+.bar-lbl{font-size:9px;color:var(--subtle);font-family:var(--mono);margin-top:3px}
+
+/* TABS */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* CHART.JS WRAP */
+.chartjs-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.chart-canvas-box{position:relative;width:100%;height:110px}
+.chart-canvas-box canvas{width:100%!important;height:100%!important}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.chart-title{font-size:11px;color:var(--subtle);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px}
+.chart-badge{font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--border);padding:2px 8px;border-radius:4px}
+
+/* CARD BUTTONS */
+.card-actions{display:flex;gap:5px;margin-top:8px}
+.btn-iniciar{flex:1;background:#0A2E1E;color:var(--green);border:1px solid #134D32;border-radius:5px;padding:5px 0;font-size:10px;cursor:pointer;font-family:var(--mono);transition:background .15s}
+.btn-iniciar:hover{background:#0F4028}
+.btn-encerrar{flex:1;background:#1A0505;color:var(--red);border:1px solid #3D0909;border-radius:5px;padding:5px 0;font-size:10px;cursor:pointer;font-family:var(--mono);transition:background .15s}
+.btn-encerrar:hover{background:#280A0A}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;align-items:center;justify-content:center;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:360px}
+.modal-title{font-size:15px;font-weight:500;color:var(--text);margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--muted);margin-bottom:18px;font-family:var(--mono)}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:5px;display:block}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;transition:border-color .15s}
+.form-input:focus{border-color:#2D3748}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.btn-cancel{flex:1;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.btn-confirm{flex:1;background:var(--red);border:none;color:#fff;border-radius:7px;padding:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.btn-confirm:hover{opacity:.9}
+.btn-confirm:disabled{opacity:.5;cursor:not-allowed}
+
+/* TOASTS */
+.toast-container{position:fixed;top:64px;right:16px;z-index:400;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:10px;min-width:260px;max-width:320px;animation:slideIn .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.toast.ok .toast-dot{background:var(--green)}
+.toast.alerta .toast-dot{background:var(--orange)}
+.toast.erro .toast-dot{background:var(--red)}
+
+/* SINO DE NOTIFICAÇÕES */
+.bell-btn{position:relative;background:transparent;border:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:6px;display:flex;align-items:center;transition:background .15s,color .15s}
+.bell-btn:hover{background:var(--surface);color:var(--text)}
+.bell-badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:600;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;font-family:var(--mono)}
+.bell-badge.hidden{display:none}
+
+/* PAINEL DE NOTIFICAÇÕES */
+.notif-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:250}
+.notif-overlay.show{display:block}
+.notif-panel{position:fixed;top:0;right:-360px;width:340px;height:100%;background:var(--surface);border-left:1px solid var(--border);z-index:260;transition:right .25s ease;display:flex;flex-direction:column}
+.notif-panel.show{right:0}
+.notif-header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.notif-title{font-size:13px;font-weight:500;color:var(--text)}
+.notif-close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px}
+.notif-close:hover{color:var(--text)}
+.notif-list{flex:1;overflow-y:auto;padding:8px}
+.notif-item{padding:11px 12px;border-radius:8px;margin-bottom:4px;display:flex;gap:10px}
+.notif-item:hover{background:var(--surface2)}
+.notif-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.notif-dot.ok{background:var(--green)}
+.notif-dot.alerta{background:var(--orange)}
+.notif-dot.critico{background:var(--red)}
+.notif-dot.erro{background:var(--red)}
+.notif-body{flex:1}
+.notif-item-title{font-size:12px;color:var(--text);font-weight:500;margin-bottom:2px}
+.notif-item-msg{font-size:11px;color:var(--muted);line-height:1.4}
+.notif-item-time{font-size:9px;color:var(--subtle);font-family:var(--mono);margin-top:3px}
+.notif-empty{padding:40px 20px;text-align:center;color:var(--subtle);font-size:12px}
+.notif-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.btn-clear-notif{width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s}
+.btn-clear-notif:hover{border-color:#3D0909;color:var(--red)}
+
+/* CONFIG TAB */
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.cfg-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.cfg-block-title{font-size:11px;color:var(--subtle);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.cfg-field{margin-bottom:12px}
+.cfg-field:last-child{margin-bottom:0}
+.cfg-label{font-size:11px;color:var(--muted);margin-bottom:5px;display:block}
+.cfg-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;transition:border-color .15s}
+.cfg-input:focus{border-color:#2D3748}
+.cfg-input.mono{font-family:var(--mono)}
+.cfg-row{display:flex;gap:10px;align-items:flex-end}
+.cfg-row .cfg-field{flex:1;margin-bottom:0}
+.cfg-tag{font-size:10px;color:var(--subtle);font-family:var(--mono);align-self:center;padding-bottom:9px}
+.btn-save{background:var(--red);border:none;color:#fff;border-radius:7px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.btn-save:hover{opacity:.9}
+.btn-save:disabled{opacity:.5;cursor:not-allowed}
+.btn-reset{background:transparent;border:1px solid #3D0909;color:var(--red);border-radius:7px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:var(--sans);transition:background .15s}
+.btn-reset:hover{background:#1A0505}
+.cfg-actions{display:flex;gap:10px;margin-top:4px}
+.cfg-danger{background:var(--surface);border:1px solid #3D0909;border-radius:10px;padding:16px}
+.cfg-danger-title{font-size:12px;color:var(--red);font-weight:500;margin-bottom:4px}
+.cfg-danger-desc{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+/* ── RESPONSIVIDADE ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .body{grid-template-columns:1fr}
+  .sidebar{border-left:none;border-top:1px solid var(--border)}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .topbar{flex-wrap:wrap;height:auto;row-gap:8px}
+  .nav{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .nav-btn{white-space:nowrap}
+  .topbar-right{margin-left:auto}
+}
+
+@media (max-width: 600px) {
+  .gauge-wrap{flex-direction:column;align-items:flex-start;gap:12px}
+  .gauge-meta{text-align:left}
+  .cfg-grid{grid-template-columns:1fr}
+  .notif-panel{width:calc(100vw - 24px);max-width:340px}
+}
+
+@media (max-width: 480px) {
+  .grid{grid-template-columns:1fr}
+  .main{padding:12px}
+  .sidebar{padding:12px}
+  .metrics{grid-template-columns:1fr 1fr}
+  .card-actions{flex-direction:column}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="/">
+    <div class="logo-img-wrap"><img src="/static/goodwe_logo.png" alt="GoodWe" class="logo-img"></div>
+    <div>
+      <div class="logo-name">ChargeGrid Intelligence</div>
+      <div class="logo-sub">powered by GoodWe HCA G2</div>
+    </div>
+  </a>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="setTab('conectores',this)">Conectores</button>
+    <button class="nav-btn" onclick="setTab('financeiro',this)">Faturamento</button>
+    <button class="nav-btn" onclick="setTab('recomendacoes',this)">IA</button>
+    <button class="nav-btn" onclick="setTab('config',this)">Configurações</button>
+    <a href="/mapa" class="nav-btn" style="text-decoration:none;display:inline-flex;align-items:center">Mapa ↗</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="status-dot"></span>
+    <span id="ts">--:--:--</span>
+    <button class="bell-btn" onclick="abrirNotificacoes()" aria-label="Notificações">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="bell-badge hidden" id="bell-badge">0</span>
+    </button>
+  </div>
+</div>
+
+<div class="notif-overlay" id="notif-overlay" onclick="fecharNotificacoes()"></div>
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-header">
+    <span class="notif-title">Notificações</span>
+    <button class="notif-close" onclick="fecharNotificacoes()">✕</button>
+  </div>
+  <div class="notif-list" id="notif-list">
+    <div class="notif-empty">Nenhuma notificação ainda.</div>
+  </div>
+  <div class="notif-footer">
+    <button class="btn-clear-notif" onclick="limparNotificacoes()">Limpar tudo</button>
+  </div>
+</div>
+
+<div class="body">
+  <div class="main">
+
+    <!-- TAB: CONECTORES -->
+    <div id="tab-conectores" class="tab-content active">
+      <div class="label">Demanda elétrica — tempo real</div>
+      <div class="gauge-wrap">
+        <svg width="110" height="70" viewBox="0 0 110 70" role="img" aria-label="Gauge de demanda elétrica">
+          <path d="M10 65 A45 45 0 0 1 100 65" fill="none" stroke="#1E2436" stroke-width="9" stroke-linecap="round"/>
+          <path id="gauge-arc" d="M10 65 A45 45 0 0 1 100 65" fill="none" stroke="#E8001C" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="141" stroke-dashoffset="141"/>
+          <path d="M10 65 A45 45 0 0 1 67 22" fill="none" stroke="#F5A623" stroke-width="1.5" stroke-dasharray="3 4" opacity=".5"/>
+          <text x="55" y="63" text-anchor="middle" font-size="18" font-weight="500" fill="#E8EAF0" font-family="IBM Plex Mono" id="gauge-pct">0%</text>
+          <text x="11" y="70" font-size="8" fill="#4A5568" font-family="IBM Plex Mono">0</text>
+          <text x="89" y="70" font-size="8" fill="#4A5568" font-family="IBM Plex Mono">100%</text>
+        </svg>
+        <div class="gauge-info">
+          <div class="gauge-title">Potência total consumida</div>
+          <div class="gauge-val" id="g-total">-- <span>kW</span></div>
+          <div class="gauge-sub">Limite contratado: <b id="g-limite">--</b> kW</div>
+          <div class="gauge-msg msg-ok" id="g-msg">Carregando...</div>
+        </div>
+        <div class="gauge-meta">
+          <span style="color:#00C896" id="g-bal">● Normal</span>
+          <span id="g-atualizado">--</span>
+        </div>
+      </div>
+
+      <div class="chartjs-wrap">
+        <div class="chart-header">
+          <span class="chart-title">Potência total — últimos 20min</span>
+          <span class="chart-badge" id="chart-now">-- kW</span>
+        </div>
+        <div class="chart-canvas-box">
+          <canvas id="chart-potencia"></canvas>
+        </div>
+      </div>
+      <div class="label">Conectores</div>
+      <div class="grid" id="connector-grid">
+        <div class="card" style="opacity:.4"><div class="card-meta" style="padding:20px 0;text-align:center">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: FATURAMENTO -->
+    <div id="tab-financeiro" class="tab-content">
+      <div class="label">Resumo do dia</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <div class="metric" style="border-color:#0F3320">
+          <div class="metric-label">Receita hoje</div>
+          <div class="metric-val" style="color:#00C896" id="f-receita">R$0</div>
+          <div class="metric-sub">sessões encerradas</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Total de sessões</div>
+          <div class="metric-val" id="f-total">0</div>
+          <div class="metric-sub">desde 00h</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Ticket médio</div>
+          <div class="metric-val" id="f-ticket">R$0</div>
+          <div class="metric-sub">por sessão</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="label" style="margin-bottom:0">Histórico de sessões</div>
+        <a href="/api/exportar/csv" class="btn-save" style="text-decoration:none;font-size:11px;padding:7px 14px;display:inline-flex;align-items:center;gap:6px">
+          ⭳ Exportar CSV
+        </a>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:8px 12px;text-align:left;color:var(--subtle);font-weight:500;font-family:var(--mono)">Conector</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--subtle);font-weight:500;font-family:var(--mono)">Usuário</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--subtle);font-weight:500;font-family:var(--mono)">Início</th>
+              <th style="padding:8px 12px;text-align:right;color:var(--subtle);font-weight:500;font-family:var(--mono)">kWh</th>
+              <th style="padding:8px 12px;text-align:right;color:var(--subtle);font-weight:500;font-family:var(--mono)">Valor</th>
+              <th style="padding:8px 12px;text-align:center;color:var(--subtle);font-weight:500;font-family:var(--mono)">Status</th>
+              <th style="padding:8px 12px;text-align:center;color:var(--subtle);font-weight:500;font-family:var(--mono)"></th>
+            </tr>
+          </thead>
+          <tbody id="f-tabela">
+            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--subtle)">Nenhuma sessão registrada hoje.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: RECOMENDAÇÕES -->
+    <div id="tab-recomendacoes" class="tab-content">
+      <div class="label">Motor de IA — recomendações</div>
+      <div class="rec-list" id="rec-list">
+        <div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Carregando análise...</div>
+      </div>
+    </div>
+
+    <!-- TAB: CONFIGURAÇÕES -->
+    <div id="tab-config" class="tab-content">
+      <div class="label">Configurações do sistema</div>
+      <div class="cfg-grid">
+
+        <div class="cfg-block">
+          <div class="cfg-block-title">Estabelecimento</div>
+          <div class="cfg-field">
+            <label class="cfg-label">Nome exibido no painel</label>
+            <input class="cfg-input" id="cfg-nome" type="text" placeholder="Ex: Estacionamento Central">
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-label">Limite contratado de potência</label>
+            <div class="cfg-row">
+              <input class="cfg-input mono" id="cfg-limite" type="number" step="1" min="1" placeholder="55">
+              <span class="cfg-tag">kW</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-block">
+          <div class="cfg-block-title">Tarifas por horário</div>
+          <div class="cfg-field">
+            <label class="cfg-label">00h – 06h (fora de ponta)</label>
+            <div class="cfg-row">
+              <span class="cfg-tag">R$</span>
+              <input class="cfg-input mono" id="cfg-t1" type="number" step="0.01" min="0" placeholder="0.62">
+              <span class="cfg-tag">/kWh</span>
+            </div>
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-label">06h – 17h (normal)</label>
+            <div class="cfg-row">
+              <span class="cfg-tag">R$</span>
+              <input class="cfg-input mono" id="cfg-t2" type="number" step="0.01" min="0" placeholder="0.78">
+              <span class="cfg-tag">/kWh</span>
+            </div>
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-label">17h – 21h (pico)</label>
+            <div class="cfg-row">
+              <span class="cfg-tag">R$</span>
+              <input class="cfg-input mono" id="cfg-t3" type="number" step="0.01" min="0" placeholder="1.25">
+              <span class="cfg-tag">/kWh</span>
+            </div>
+          </div>
+          <div class="cfg-field">
+            <label class="cfg-label">21h – 00h (reduzido)</label>
+            <div class="cfg-row">
+              <span class="cfg-tag">R$</span>
+              <input class="cfg-input mono" id="cfg-t4" type="number" step="0.01" min="0" placeholder="0.70">
+              <span class="cfg-tag">/kWh</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="cfg-actions" style="margin-bottom:16px">
+        <button class="btn-save" id="btn-save-cfg" onclick="salvarConfig()">Salvar configurações</button>
+      </div>
+
+      <div class="cfg-danger">
+        <div class="cfg-danger-title">Zona de reinício</div>
+        <div class="cfg-danger-desc">Reinicia todas as sessões ativas do simulador ao estado inicial de demonstração. Útil antes de uma nova apresentação. Esta ação não pode ser desfeita.</div>
+        <button class="btn-reset" onclick="resetarSimulador()">Reiniciar simulador</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="label">Resumo financeiro</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Receita hoje</div>
+        <div class="metric-val" style="color:#00C896;font-size:15px" id="s-receita">R$0</div>
+        <div class="metric-sub">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Ativos agora</div>
+        <div class="metric-val" style="color:var(--red);font-size:15px" id="s-ativos">--</div>
+        <div class="metric-sub" id="s-total-c">de -- conectores</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total sessões</div>
+        <div class="metric-val" style="font-size:15px" id="s-sessoes">0</div>
+        <div class="metric-sub">hoje</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Em falha</div>
+        <div class="metric-val" style="font-size:15px" id="s-falhas">--</div>
+        <div class="metric-sub">conector(es)</div>
+      </div>
+    </div>
+
+    <div class="label">Tarifas configuradas</div>
+    <div class="tariff-block" id="tariff-block">
+      <div class="tariff-row"><span class="t-time">00h–06h</span><span class="t-val">R$0,62</span><span class="t-tag tag-fora">fora ponta</span></div>
+      <div class="tariff-row"><span class="t-time">06h–17h</span><span class="t-val">R$0,78</span><span class="t-tag tag-norm">normal</span></div>
+      <div class="tariff-row"><span class="t-time">17h–21h</span><span class="t-val">R$1,25</span><span class="t-tag tag-pico">pico</span></div>
+      <div class="tariff-row"><span class="t-time">21h–00h</span><span class="t-val">R$0,70</span><span class="t-tag tag-red">reduzido</span></div>
+    </div>
+
+    <div class="label">Uso por horário (simulado)</div>
+    <div class="chart-block">
+      <div style="font-size:9px;color:var(--subtle);font-family:var(--mono)">sessões por faixa</div>
+      <div class="chart-bars" id="chart-bars"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INICIAR SESSÃO -->
+<div class="modal-bg" id="modal-iniciar">
+  <div class="modal">
+    <div class="modal-title">Iniciar sessão</div>
+    <div class="modal-sub" id="modal-sub">Conector --</div>
+    <div class="form-group">
+      <label class="form-label">Nome do usuário</label>
+      <input class="form-input" id="m-nome" type="text" placeholder="Ex: Ana Clara">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Veículo</label>
+      <input class="form-input" id="m-veiculo" type="text" placeholder="Ex: BYD Seal 2024">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Placa</label>
+      <input class="form-input" id="m-placa" type="text" placeholder="Ex: ABC-1D23" maxlength="8">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-confirm" id="btn-confirm" onclick="confirmarIniciar()">Iniciar sessão</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+
+<script>
+// ── Tabs ──────────────────────────────────────────────────────
+function setTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Gauge ─────────────────────────────────────────────────────
+const GAUGE_LEN = 141;
+function updateGauge(pct, total, limite, nivel, msg) {
+  const offset = GAUGE_LEN - (pct / 100) * GAUGE_LEN;
+  const arc = document.getElementById('gauge-arc');
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = pct >= 95 ? '#E8001C' : pct >= 80 ? '#F5A623' : '#E8001C';
+
+  document.getElementById('gauge-pct').textContent = pct + '%';
+  document.getElementById('g-total').innerHTML = total + ' <span>kW</span>';
+  document.getElementById('g-limite').textContent = limite;
+
+  const el = document.getElementById('g-msg');
+  el.textContent = msg;
+  el.className = 'gauge-msg ' + (nivel === 'critico' ? 'msg-critico' : nivel === 'alerta' ? 'msg-alerta' : 'msg-ok');
+
+  const bal = document.getElementById('g-bal');
+  if (nivel === 'critico') { bal.textContent = '⚡ Balanceamento crítico'; bal.style.color = '#E8001C'; }
+  else if (nivel === 'alerta') { bal.textContent = '⚠ Balanceamento ativo'; bal.style.color = '#F5A623'; }
+  else { bal.textContent = '● Normal'; bal.style.color = '#00C896'; }
+}
+
+// ── Connector cards ───────────────────────────────────────────
+function statusClass(cod) {
+  if (cod === 3) return ['badge-active','Carregando','#00C896'];
+  if (cod === 5) return ['badge-falha','Alarme','#E8001C'];
+  if (cod === 2) return ['badge-handshake','Handshake','#4A90D9'];
+  if (cod === 4) return ['badge-idle','Concluído','#6B7280'];
+  return ['badge-idle','Disponível','#2D3748'];
+}
+
+function renderCards(conectores) {
+  const grid = document.getElementById('connector-grid');
+  grid.innerHTML = conectores.map(c => {
+    const [bcls, blbl, acor] = statusClass(c.status_cod);
+    const pct = c.pmax_kw > 0 ? Math.min(100, (c.potencia_kw / c.pmax_kw) * 100) : 0;
+    const kwh = c.kwh_sessao ? c.kwh_sessao.toFixed(1) : '0.0';
+    const kw  = c.status_cod === 3 ? c.potencia_kw.toFixed(1) : '—';
+    const usr = c.usuario ? `<b>${c.usuario.nome}</b> · ${c.usuario.veiculo}` : (c.falha_cod ? `Erro: ${c.falha_cod}` : 'Aguardando conexão');
+    const meta2 = c.status_cod === 3 ? `${kwh} kWh · ${c.duracao_str}` : (c.status_cod === 5 ? 'Verificar RS-485' : 'RFID / App / Auto');
+    const balTag = c.balanceado ? '<span style="color:#F5A623;font-size:8px"> ⚡ balanceado</span>' : '';
+    return `
+    <div class="card">
+      <div class="card-accent" style="background:${acor}"></div>
+      <div class="card-top">
+        <span class="card-id">${c.id}</span>
+        <span class="badge ${bcls}">${blbl}</span>
+      </div>
+      <div class="card-power" style="color:${c.status_cod===3?'#E8EAF0':'#4A5568'}">${kw} <span>kW${balTag}</span></div>
+      <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%;background:${acor}"></div></div>
+      <div class="card-meta">${usr}</div>
+      <div class="card-meta">${meta2}</div>
+      <div class="card-actions">
+        ${c.status_cod===1||c.status_cod===0 ? `<button class="btn-iniciar" onclick="abrirModal('${c.id}')">＋ Iniciar</button>` : ''}
+        ${c.status_cod===3 ? `<button class="btn-encerrar" onclick="encerrarSessao('${c.id}')">✕ Encerrar</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Recomendações ─────────────────────────────────────────────
+function renderRecs(recs) {
+  const cores = { critico:'#E8001C', alerta:'#F5A623', info:'#4A90D9', ok:'#00C896' };
+  document.getElementById('rec-list').innerHTML = recs.map(r => `
+    <div class="rec-item">
+      <div class="rec-dot" style="background:${cores[r.nivel]||'#6B7280'}"></div>
+      <div><div class="rec-title">${r.titulo}</div><div class="rec-text">${r.texto}</div></div>
+    </div>`).join('');
+}
+
+// ── Tarifas ───────────────────────────────────────────────────
+function renderTarifas(cfg) {
+  const h = new Date().getHours();
+  const faixas = [
+    ['00h–06h', cfg.tarifa_00_06, 'fora ponta', 'tag-fora', h < 6],
+    ['06h–17h', cfg.tarifa_06_17, 'normal', 'tag-norm', h >= 6 && h < 17],
+    ['17h–21h', cfg.tarifa_17_21, 'pico', 'tag-pico', h >= 17 && h < 21],
+    ['21h–00h', cfg.tarifa_21_00, 'reduzido', 'tag-red', h >= 21],
+  ];
+  document.getElementById('tariff-block').innerHTML = faixas.map(([t, v, n, cls, cur]) => `
+    <div class="tariff-row${cur?' current':''}">
+      <span class="t-time" style="${cur?'color:#F5A623':''}">${t}${cur?' ●':''}</span>
+      <span class="t-val" style="${cur?'color:#F5A623':''}">R$${parseFloat(v).toFixed(2).replace('.',',')}</span>
+      <span class="t-tag ${cls}">${n}</span>
+    </div>`).join('');
+}
+
+// ── Mini chart ────────────────────────────────────────────────
+function renderChart() {
+  const horas = [0,2,4,6,8,10,12,14,16,18,20,22];
+  const dados = [1,0,1,3,4,5,4,3,6,8,5,2];
+  const max   = Math.max(...dados);
+  const h     = new Date().getHours();
+  document.getElementById('chart-bars').innerHTML = horas.map((hr, i) => {
+    const ativo = hr === Math.floor(h/2)*2;
+    const pct   = max > 0 ? (dados[i]/max)*100 : 0;
+    const cor   = ativo ? 'var(--red)' : hr >= 17 && hr < 21 ? '#3D2010' : '#1A4030';
+    return `<div class="bar-col">
+      <div class="bar" style="height:${Math.max(4,pct*0.46)}px;background:${cor}"></div>
+      <div class="bar-lbl">${String(hr).padStart(2,'0')}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Financeiro ────────────────────────────────────────────────
+async function loadFinanceiro() {
+  const d = await fetch('/api/financeiro').then(r=>r.json());
+  document.getElementById('f-receita').textContent = 'R$' + d.receita_dia.toFixed(2).replace('.',',');
+  document.getElementById('f-total').textContent   = d.total_sessoes;
+  document.getElementById('f-ticket').textContent  = 'R$' + d.ticket_medio.toFixed(2).replace('.',',');
+  document.getElementById('s-sessoes').textContent = d.total_sessoes;
+
+  const tbody = document.getElementById('f-tabela');
+  if (!d.sessoes || d.sessoes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--subtle)">Nenhuma sessão registrada hoje.</td></tr>';
+  } else {
+    tbody.innerHTML = d.sessoes.map(s => `
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px">${s.conector_id}</td>
+        <td style="padding:8px 12px;font-size:11px">${s.usuario}</td>
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px">${s.inicio.slice(11,16)}</td>
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;text-align:right">${s.kwh_total.toFixed(1)}</td>
+        <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;text-align:right;color:#00C896">R$${s.valor_total.toFixed(2)}</td>
+        <td style="padding:8px 12px;text-align:center">
+          <span class="badge ${s.status==='ativa'?'badge-active':'badge-idle'}">${s.status}</span>
+        </td>
+        <td style="padding:8px 12px;text-align:center">
+          ${s.status==='encerrada' ? `<a href="/comprovante/${s.id}" target="_blank" style="color:#4A90D9;text-decoration:none;font-size:11px" title="Ver comprovante">📄</a>` : ''}
+        </td>
+      </tr>`).join('');
+  }
+}
+
+// ── Chart.js — potência em tempo real ────────────────────────
+const HIST_MAX = 20;
+const potHist  = Array(HIST_MAX).fill(null);
+const lblHist  = Array(HIST_MAX).fill('');
+let chartPot   = null;
+
+function initChart() {
+  const ctx = document.getElementById('chart-potencia').getContext('2d');
+  chartPot = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: lblHist,
+      datasets: [{
+        data: potHist,
+        borderColor: '#E8001C',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0,0,0,100);
+          g.addColorStop(0,'rgba(232,0,28,.18)');
+          g.addColorStop(1,'rgba(232,0,28,0)');
+          return g;
+        },
+        tension: 0,
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:400},
+      plugins:{legend:{display:false},tooltip:{
+        callbacks:{label: ctx => ctx.parsed.y != null ? ctx.parsed.y.toFixed(1)+' kW' : ''}
+      }},
+      scales:{
+        x:{display:false},
+        y:{
+          min:0, max:60,
+          grid:{color:'#1E2436'},
+          ticks:{color:'#4A5568',font:{family:'IBM Plex Mono',size:9},callback:v=>v+'kW'}
+        }
+      }
+    }
+  });
+}
+
+let _ultimoPontoChartTs = -Infinity; // garante que o primeiro ponto seja sempre registrado
+const INTERVALO_PONTO_CHART_MS = 60000; // novo ponto a cada 60s, mesmo sem variação
+let _chartHistoricoSemeado = false;
+
+// Preenche os 19 pontos anteriores com valores plausíveis ancorados na leitura
+// real atual, simulando que o gráfico já estava rodando há 20 minutos quando
+// a página foi aberta — evita o gráfico "vazio" nos primeiros 19 minutos.
+function seedChartHistorico(valorAtual) {
+  if (_chartHistoricoSemeado) return;
+  _chartHistoricoSemeado = true;
+
+  let valor = valorAtual;
+  const agora = Date.now();
+  const pontos = [valorAtual];
+  for (let i = 1; i < HIST_MAX; i++) {
+    valor = Math.max(3, valor + (Math.random() * 3 - 1.5)); // pequeno passeio aleatório
+    pontos.unshift(Math.round(valor * 10) / 10);
+  }
+  for (let i = 0; i < HIST_MAX; i++) {
+    potHist[i] = pontos[i];
+    const ts = new Date(agora - (HIST_MAX - 1 - i) * INTERVALO_PONTO_CHART_MS);
+    lblHist[i] = ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
+  _ultimoPontoChartTs = agora; // próximo ponto real de verdade só daqui a 60s
+
+  if (chartPot) {
+    chartPot.data.labels = [...lblHist];
+    chartPot.data.datasets[0].data = [...potHist];
+    chartPot.update('none');
+  }
+}
+
+function pushChart(val, ts) {
+  // O "kW agora" no badge acompanha em tempo real (a cada 3s, junto com os cards).
+  document.getElementById('chart-now').textContent = val.toFixed(1) + ' kW';
+
+  if (!_chartHistoricoSemeado) { seedChartHistorico(val); return; }
+
+  const agora = Date.now();
+  if (agora - _ultimoPontoChartTs < INTERVALO_PONTO_CHART_MS) return; // ainda não passou 1 minuto
+  _ultimoPontoChartTs = agora;
+
+  potHist.push(val); potHist.shift();
+  lblHist.push(ts);  lblHist.shift();
+  if (chartPot) {
+    chartPot.data.labels = [...lblHist];
+    chartPot.data.datasets[0].data = [...potHist];
+    chartPot.update('none');
+  }
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+let _cidModal = null;
+function abrirModal(cid) {
+  _cidModal = cid;
+  document.getElementById('modal-sub').textContent = 'Conector ' + cid;
+  document.getElementById('m-nome').value    = '';
+  document.getElementById('m-veiculo').value = '';
+  document.getElementById('m-placa').value   = '';
+  document.getElementById('modal-iniciar').classList.add('show');
+  setTimeout(() => document.getElementById('m-nome').focus(), 50);
+}
+function fecharModal() {
+  document.getElementById('modal-iniciar').classList.remove('show');
+  _cidModal = null;
+}
+async function confirmarIniciar() {
+  const nome    = document.getElementById('m-nome').value.trim();
+  const veiculo = document.getElementById('m-veiculo').value.trim();
+  const placa   = document.getElementById('m-placa').value.trim().toUpperCase();
+  if (!nome || !veiculo || !placa) { toast('Preencha todos os campos.','alerta'); return; }
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true; btn.textContent = 'Iniciando...';
+  try {
+    const r = await fetch('/api/sessao/iniciar/' + _cidModal, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nome, veiculo, placa})
+    });
+    const d = await r.json();
+    if(d.ok){ toast('Sessão iniciada em ' + _cidModal + ' — ' + nome, 'ok'); fecharModal(); atualizarAlertas(true); }
+    else { toast(d.erro || 'Erro ao iniciar sessão.', 'erro'); }
+  } catch(e) { toast('Erro de conexão.','erro'); }
+  btn.disabled = false; btn.textContent = 'Iniciar sessão';
+}
+
+// ── Encerrar sessão ────────────────────────────────────────────
+async function encerrarSessao(cid) {
+  if(!confirm('Encerrar a sessão do conector ' + cid + '?')) return;
+  try {
+    const r = await fetch('/api/sessao/encerrar/' + cid, {method:'POST'});
+    const d = await r.json();
+    if(d.ok){
+      const v = d.comprovante?.valor_total?.toFixed(2).replace('.',',') || '--';
+      toast('Sessão de ' + cid + ' encerrada — R$' + v, 'ok');
+      atualizarAlertas(true);
+    } else { toast(d.erro || 'Erro ao encerrar.','erro'); }
+  } catch(e) { toast('Erro de conexão.','erro'); }
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function toast(msg, tipo='ok') {
+  const c  = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + tipo;
+  el.innerHTML = '<span class="toast-dot"></span><span>' + msg + '</span>';
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 8000);
+}
+
+// ── Central de notificações ──────────────────────────────────
+let _ultimoIdVisto = null;   // null = ainda não sincronizado (evita toast retroativo no load)
+let _painelAberto  = false;
+
+function abrirNotificacoes() {
+  _painelAberto = true;
+  document.getElementById('notif-panel').classList.add('show');
+  document.getElementById('notif-overlay').classList.add('show');
+}
+function fecharNotificacoes() {
+  _painelAberto = false;
+  document.getElementById('notif-panel').classList.remove('show');
+  document.getElementById('notif-overlay').classList.remove('show');
+}
+
+async function limparNotificacoes() {
+  try {
+    await fetch('/api/alertas/limpar', {method:'POST'});
+    await atualizarAlertas(true);
+  } catch(e) { toast('Erro ao limpar notificações.','erro'); }
+}
+
+function renderNotificacoes(alertas) {
+  const list = document.getElementById('notif-list');
+  if (!alertas.length) {
+    list.innerHTML = '<div class="notif-empty">Nenhuma notificação ainda.</div>';
+  } else {
+    list.innerHTML = [...alertas].reverse().map(a => `
+      <div class="notif-item">
+        <div class="notif-dot ${a.tipo}"></div>
+        <div class="notif-body">
+          <div class="notif-item-title">${a.titulo}</div>
+          <div class="notif-item-msg">${a.mensagem}</div>
+          <div class="notif-item-time">${a.timestamp}</div>
+        </div>
+      </div>`).join('');
+  }
+  const badge = document.getElementById('bell-badge');
+  if (alertas.length > 0) {
+    badge.textContent = alertas.length > 9 ? '9+' : alertas.length;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// silenciarProximo evita toast duplicado quando o próprio usuário já viu
+// feedback imediato (ex: ao clicar em Iniciar/Encerrar) — a ação local já
+// mostra toast, então sincronizamos o id sem disparar de novo pelo poll.
+async function atualizarAlertas(silenciarProximo = false) {
+  try {
+    const d = await fetch('/api/alertas').then(r => r.json());
+    const alertas = d.alertas || [];
+
+    if (_ultimoIdVisto === null) {
+      // primeira carga da página — não dispara toasts retroativos
+      _ultimoIdVisto = alertas.length ? alertas[alertas.length - 1].id : 0;
+    } else if (!silenciarProximo) {
+      const novos = alertas.filter(a => a.id > _ultimoIdVisto);
+      novos.forEach(a => toast(a.titulo, a.tipo === 'erro' ? 'erro' : a.tipo === 'critico' ? 'erro' : a.tipo));
+    }
+    if (alertas.length) _ultimoIdVisto = Math.max(_ultimoIdVisto, alertas[alertas.length - 1].id);
+
+    if (_painelAberto || silenciarProximo) renderNotificacoes(alertas);
+    else renderNotificacoes(alertas); // badge sempre atualiza, mesmo com painel fechado
+  } catch(e) { /* silencioso */ }
+}
+
+// ── Atualizar sidebar receita ──────────────────────────────────
+async function atualizarReceita() {
+  try {
+    const f = await fetch('/api/financeiro').then(r=>r.json());
+    document.getElementById('s-receita').textContent = 'R$' + f.receita_dia.toFixed(2).replace('.',',');
+  } catch(e){}
+}
+
+// ── Configurações ────────────────────────────────────────────
+async function carregarConfigForm() {
+  try {
+    const cfg = await fetch('/api/config').then(r=>r.json());
+    document.getElementById('cfg-nome').value   = cfg.nome_estabelecimento || '';
+    document.getElementById('cfg-limite').value = cfg.limite_contratado_kw || '';
+    document.getElementById('cfg-t1').value     = cfg.tarifa_00_06 || '';
+    document.getElementById('cfg-t2').value     = cfg.tarifa_06_17 || '';
+    document.getElementById('cfg-t3').value     = cfg.tarifa_17_21 || '';
+    document.getElementById('cfg-t4').value     = cfg.tarifa_21_00 || '';
+  } catch(e) { toast('Erro ao carregar configurações.','erro'); }
+}
+
+async function salvarConfig() {
+  const btn = document.getElementById('btn-save-cfg');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const payload = {
+    nome_estabelecimento: document.getElementById('cfg-nome').value.trim(),
+    limite_contratado_kw: document.getElementById('cfg-limite').value,
+    tarifa_00_06: document.getElementById('cfg-t1').value,
+    tarifa_06_17: document.getElementById('cfg-t2').value,
+    tarifa_17_21: document.getElementById('cfg-t3').value,
+    tarifa_21_00: document.getElementById('cfg-t4').value,
+  };
+
+  try {
+    const r = await fetch('/api/config/salvar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) { toast('Configurações salvas com sucesso.','ok'); renderTarifas(d.config); }
+    else { toast(d.erro || 'Erro ao salvar.','erro'); }
+  } catch(e) { toast('Erro de conexão ao salvar.','erro'); }
+
+  btn.disabled = false; btn.textContent = 'Salvar configurações';
+}
+
+async function resetarSimulador() {
+  if (!confirm('Reiniciar o simulador? Todas as sessões ativas serão perdidas.')) return;
+  try {
+    const r = await fetch('/api/simulador/reset', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) { toast('Simulador reiniciado.','ok'); atualizar(); }
+    else { toast('Erro ao reiniciar.','erro'); }
+  } catch(e) { toast('Erro de conexão.','erro'); }
+}
+
+// ── Loop principal ────────────────────────────────────────────
+async function atualizar() {
+  try {
+    const d = await fetch('/api/conectores').then(r=>r.json());
+    const dem = d.demanda;
+
+    updateGauge(dem.percentual, dem.potencia_total_kw, dem.limite_kw, dem.nivel, dem.mensagem);
+    try { pushChart(dem.potencia_total_kw, d.timestamp); } catch(e) {}
+    renderCards(d.conectores);
+
+    const ativos = d.conectores.filter(c => c.status_cod === 3).length;
+    const falhas = d.conectores.filter(c => c.status_cod === 5).length;
+    document.getElementById('s-ativos').textContent    = ativos;
+    document.getElementById('s-total-c').textContent   = 'de ' + d.conectores.length + ' conectores';
+    document.getElementById('s-falhas').textContent    = falhas;
+    document.getElementById('g-atualizado').textContent = d.timestamp;
+    document.getElementById('ts').textContent           = d.timestamp;
+
+    const cfg = await fetch('/api/config').then(r=>r.json());
+    renderTarifas(cfg);
+
+    const recs = await fetch('/api/recomendacoes').then(r=>r.json());
+    renderRecs(recs.recomendacoes);
+
+    await loadFinanceiro();
+    const sid = document.querySelector('.sidebar .metric:first-child');
+  } catch(e) {
+    document.getElementById('g-msg').textContent = 'Erro de conexão com o servidor.';
+  }
+}
+
+renderChart();
+try { initChart(); } catch(e) { console.warn('Gráfico de potência indisponível (CDN Chart.js não carregou):', e); }
+atualizar();
+atualizarReceita();
+carregarConfigForm();
+atualizarAlertas();
+setInterval(atualizar, 3000);
+setInterval(atualizarReceita, 10000);
+setInterval(atualizarAlertas, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Banco de dados local — gerado automaticamente pelo database.py
+chargegrid.db
+
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Ambiente virtual (se algum integrante usar)
+venv/
+env/
+.venv/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Configurações de IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

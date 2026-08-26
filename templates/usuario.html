@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ChargeGrid — Recarga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E8001C;--green:#10B981;--amber:#F5A623;--blue:#6366F1;
+  --bg:#0D1117;--white:#161B26;--border:#262D3D;--border2:#1E2436;
+  --text:#E8EAF0;--muted:#9CA3AF;--subtle:#6B7280;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+
+/* TOPBAR */
+.topbar{width:100%;background:var(--white);border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(0,0,0,.3);padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:26px;height:26px;background:var(--red);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:#fff;font-weight:500}
+.logo-name{font-size:13px;font-weight:500;color:var(--text)}
+.conn-tag{font-size:11px;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:6px;border:1px solid var(--border);font-family:var(--mono)}
+.home-btn{
+  display:flex;align-items:center;justify-content:center;width:38px;height:38px;
+  background:var(--white);border:1px solid var(--border);border-radius:9px;
+  color:var(--muted);text-decoration:none;margin-right:8px;flex-shrink:0;
+  transition:color .15s,border-color .15s;
+}
+.home-btn:hover{color:var(--red);border-color:#4D1A20}
+
+/* TELA DE ESPERA (pós-encerramento / sem sessão ativa) */
+.idle-view{display:none;flex-direction:column;align-items:center;text-align:center;padding:60px 20px 40px}
+.idle-view.show{display:flex}
+.idle-icon-wrap{position:relative;width:120px;height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.idle-icon-glow{position:absolute;inset:0;background:radial-gradient(circle, rgba(232,0,28,.15) 0%, rgba(232,0,28,0) 70%);border-radius:50%;animation:idlePulse 2.4s ease-in-out infinite}
+@keyframes idlePulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+.idle-icon{position:relative;z-index:1;color:var(--subtle)}
+.idle-title{font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px}
+.idle-desc{font-size:12px;color:var(--muted);line-height:1.6;max-width:280px;margin-bottom:24px}
+.idle-conn{font-size:11px;font-family:var(--mono);color:var(--subtle);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:6px 16px;margin-bottom:32px}
+.idle-dots{display:flex;gap:5px}
+.idle-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:idleDot 1.4s ease-in-out infinite}
+.idle-dot:nth-child(2){animation-delay:.2s}
+.idle-dot:nth-child(3){animation-delay:.4s}
+@keyframes idleDot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.logo-img{height:30px;width:auto}
+
+/* CHARGER HERO */
+.charger-hero{display:flex;align-items:center;justify-content:center;margin-bottom:14px;position:relative;padding:8px 0}
+.charger-glow{position:absolute;width:140px;height:140px;background:radial-gradient(circle, rgba(232,0,28,.18) 0%, rgba(232,0,28,0) 70%);border-radius:50%}
+.charger-img{height:150px;width:auto;position:relative;z-index:1;filter:drop-shadow(0 8px 16px rgba(0,0,0,.4))}
+.charger-status{position:absolute;bottom:4px;right:calc(50% - 70px);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px;z-index:2}
+.charger-status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulseDot 2s infinite}
+@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* MAIN */
+.main{width:100%;max-width:380px;padding:18px 16px 24px;flex:1}
+
+/* GREETING */
+.greeting{margin-bottom:16px}
+.greeting-name{font-size:17px;font-weight:500;color:var(--text)}
+.greeting-vehicle{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--muted)}
+.plate{background:#1E2040;color:#A5ADFF;font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-weight:500}
+
+/* RING */
+.ring-section{display:flex;justify-content:center;margin-bottom:16px;position:relative}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-pct{font-size:32px;font-weight:600;color:var(--text);line-height:1;font-family:var(--mono)}
+.ring-label{font-size:10px;color:var(--muted);margin-top:2px}
+.ring-eta{font-size:10px;color:var(--green);background:#ECFDF5;padding:2px 8px;border-radius:10px;margin-top:5px;display:inline-block;border:1px solid #D1FAE5}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center}
+.stat-val{font-size:16px;font-weight:500;font-family:var(--mono);color:var(--text)}
+.stat-unit{font-size:9px;color:var(--muted)}
+.stat-label{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* TARIFF */
+.tariff{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.tariff-left{font-size:11px;color:var(--muted)}
+.tariff-left b{display:block;font-size:13px;margin-top:1px;font-weight:500}
+.tariff-right{text-align:right}
+.tariff-price{font-size:16px;font-weight:500;font-family:var(--mono);color:var(--text)}
+.tariff-price span{font-size:10px;color:var(--muted);font-weight:400}
+.tariff-badge{font-size:9px;padding:2px 7px;border-radius:3px;display:inline-block;margin-top:3px}
+.badge-pico{background:#2E2410;color:var(--amber);border:1px solid #4D3D14}
+.badge-normal{background:#1E2436;color:var(--muted);border:1px solid var(--border)}
+.badge-fora{background:#0A2E1E;color:var(--green);border:1px solid #134D32}
+.badge-red{background:#2E2410;color:var(--amber);border:1px solid #4D3D14}
+
+/* CHAT */
+.chat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px}
+.chat-header{font-size:10px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.chat-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.msgs{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-bottom:7px}
+.msg{padding:7px 9px;border-radius:8px;font-size:11px;line-height:1.5;max-width:88%}
+.msg-bot{background:#1E2436;color:var(--text);border-radius:8px 8px 8px 2px;align-self:flex-start}
+.msg-user{background:var(--red);color:#fff;border-radius:8px 8px 2px 8px;align-self:flex-end;text-align:right}
+.chat-input-row{display:flex;gap:6px}
+.chat-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:12px;font-family:var(--sans);color:var(--text);outline:none;min-height:44px}
+.chat-input:focus{border-color:#CBD5E1}
+.chat-send{width:44px;height:44px;background:var(--red);border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ENCERRAR */
+.btn-end{width:100%;background:var(--red);color:#fff;border:none;border-radius:10px;padding:13px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.btn-end:hover{opacity:.9}
+.btn-end:disabled{opacity:.5;cursor:not-allowed}
+.btn-sub{font-size:10px;opacity:.75;display:block;margin-top:2px;font-weight:400}
+
+/* COMPROVANTE */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:var(--white);border-radius:16px;padding:20px;width:100%;max-width:340px}
+.modal-title{font-size:15px;font-weight:500;margin-bottom:4px;color:var(--text)}
+.modal-sub{font-size:11px;color:var(--muted);margin-bottom:16px}
+.comp-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border2);font-size:12px;color:var(--text)}
+.comp-row:last-of-type{border-bottom:none}
+.comp-label{color:var(--muted)}
+.comp-val{font-family:var(--mono);color:var(--text);font-weight:500}
+.comp-total{background:var(--bg);border-radius:8px;padding:10px;margin:12px 0;display:flex;justify-content:space-between;align-items:center}
+.comp-total-label{font-size:12px;color:var(--muted)}
+.comp-total-val{font-size:20px;font-weight:500;font-family:var(--mono);color:var(--green)}
+.btn-ok{width:100%;background:var(--text);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:500;cursor:pointer;margin-top:4px}
+
+/* ANIMAÇÕES DE ENTRADA */
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{opacity:0;animation:fadeSlideUp .5s ease forwards}
+.fade-1{animation-delay:.05s}
+.fade-2{animation-delay:.12s}
+.fade-3{animation-delay:.19s}
+.fade-4{animation-delay:.26s}
+.fade-5{animation-delay:.33s}
+.fade-6{animation-delay:.40s}
+.fade-7{animation-delay:.47s}
+
+/* VELOCIDADE DE CARREGAMENTO */
+.speed-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.speed-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.speed-label{font-size:11px;color:var(--muted)}
+.speed-tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px}
+.speed-lento{background:#2E2410;color:var(--amber)}
+.speed-normal{background:#1E2436;color:var(--muted)}
+.speed-rapido{background:#0A2E1E;color:var(--green)}
+.speed-bar{height:6px;background:var(--border2);border-radius:3px;overflow:hidden;display:flex}
+.speed-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* CARROSSEL DE HISTÓRICO */
+.history-wrap{margin-bottom:12px}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.history-title{font-size:11px;color:var(--muted)}
+.history-count{font-size:9px;color:var(--subtle);font-family:var(--mono)}
+.carousel{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.carousel::-webkit-scrollbar{height:4px}
+.carousel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.history-card{
+  scroll-snap-align:start;flex-shrink:0;width:150px;
+  background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+}
+.history-date{font-size:9px;color:var(--subtle);font-family:var(--mono);margin-bottom:4px}
+.history-kwh{font-size:15px;font-weight:500;font-family:var(--mono);color:var(--text)}
+.history-kwh span{font-size:9px;color:var(--muted);font-weight:400}
+.history-cost{font-size:11px;color:var(--green);font-family:var(--mono);margin-top:2px}
+.history-empty{font-size:11px;color:var(--subtle);text-align:center;padding:16px 0;width:100%}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <img src="/static/goodwe_logo.png" alt="GoodWe" class="logo-img">
+    <span class="logo-name" style="margin-left:2px">ChargeGrid</span>
+  </div>
+  <a href="/" class="home-btn" style="margin-left:auto" aria-label="Voltar ao início">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  </a>
+  <span class="conn-tag" id="conn-tag">{{ conector_id }}</span>
+</div>
+
+<div class="main">
+
+  <div id="idle-view" class="idle-view">
+    <div class="idle-icon-wrap">
+      <div class="idle-icon-glow"></div>
+      <svg class="idle-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div class="idle-title">Aguardando nova sessão</div>
+    <div class="idle-desc">Este conector está disponível. Assim que uma nova recarga for iniciada, os dados aparecerão aqui automaticamente.</div>
+    <div class="idle-conn" id="idle-conn-tag">{{ conector_id }}</div>
+    <div class="idle-dots"><span class="idle-dot"></span><span class="idle-dot"></span><span class="idle-dot"></span></div>
+  </div>
+
+  <div id="active-view">
+
+  <div class="charger-hero fade-in fade-1">
+    <div class="charger-glow"></div>
+    <img src="/static/ev_charger_g2.png" alt="Carregador GoodWe HCA G2" class="charger-img">
+    <div class="charger-status"><span class="charger-status-dot"></span>conectado</div>
+  </div>
+
+  <div class="greeting fade-in fade-2">
+    <div class="greeting-name" id="g-nome">Carregando...</div>
+    <div class="greeting-vehicle">
+      <span id="g-veiculo">--</span>
+      <span class="plate" id="g-placa">---</span>
+    </div>
+  </div>
+
+  <!-- ANEL DE PROGRESSO -->
+  <div class="ring-section fade-in fade-3">
+    <svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="Progresso de carregamento da bateria">
+      <circle cx="80" cy="80" r="66" fill="none" stroke="#1E2436" stroke-width="11"/>
+      <circle id="ring-fill" cx="80" cy="80" r="66" fill="none" stroke="#E8001C" stroke-width="11"
+        stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="414.7"
+        transform="rotate(-90 80 80)" style="transition:stroke-dashoffset .8s ease"/>
+      <circle cx="80" cy="80" r="66" fill="none" stroke="#4D1A20" stroke-width="11"
+        stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="331"
+        transform="rotate(-90 80 80)"/>
+    </svg>
+    <div class="ring-center">
+      <div class="ring-pct" id="ring-pct">--%</div>
+      <div class="ring-label">bateria</div>
+      <div class="ring-eta" id="ring-eta">calculando...</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats fade-in fade-4">
+    <div class="stat">
+      <div class="stat-val" id="s-kwh">--<span class="stat-unit"> kWh</span></div>
+      <div class="stat-label">fornecidos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--red)" id="s-custo">R$--</div>
+      <div class="stat-label">custo atual</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-pot">--<span class="stat-unit"> kW</span></div>
+      <div class="stat-label">potência</div>
+    </div>
+  </div>
+
+  <!-- TARIFA -->
+  <div class="tariff fade-in fade-4">
+    <div class="tariff-left">
+      Tarifa vigente
+      <b id="t-nome">--</b>
+    </div>
+    <div class="tariff-right">
+      <div class="tariff-price" id="t-preco">R$--<span>/kWh</span></div>
+      <span class="tariff-badge badge-normal" id="t-badge">--</span>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE DE CARREGAMENTO -->
+  <div class="speed-wrap fade-in fade-5">
+    <div class="speed-top">
+      <span class="speed-label">Velocidade de carregamento</span>
+      <span class="speed-tag speed-normal" id="speed-tag">--</span>
+    </div>
+    <div class="speed-bar">
+      <div class="speed-bar-fill" id="speed-bar-fill" style="width:0%;background:var(--muted)"></div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO — CARROSSEL -->
+  <div class="history-wrap fade-in fade-5">
+    <div class="history-header">
+      <span class="history-title">Suas últimas recargas</span>
+      <span class="history-count" id="history-count">--</span>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="history-empty">Carregando histórico...</div>
+    </div>
+  </div>
+
+  <!-- ASSISTENTE -->
+  <div class="chat fade-in fade-6">
+    <div class="chat-header"><span class="chat-dot"></span> Assistente de suporte</div>
+    <div class="msgs" id="msgs">
+      <div class="msg msg-bot">Olá! Posso ajudar com dúvidas sobre sua recarga. 😊</div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" type="text" placeholder="Digite sua dúvida..." maxlength="120">
+      <button class="chat-send" onclick="enviarMsg()" aria-label="Enviar mensagem">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- BOTÃO ENCERRAR -->
+  <button class="btn-end fade-in fade-7" id="btn-end" onclick="encerrar()">
+    Encerrar sessão
+    <span class="btn-sub">Gera comprovante e aciona cobrança</span>
+  </button>
+
+  </div>
+</div>
+
+<!-- COMPROVANTE MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">✅ Sessão encerrada</div>
+    <div class="modal-sub" id="comp-ts">--</div>
+    <div id="comp-rows"></div>
+    <div class="comp-total">
+      <span class="comp-total-label">Valor total</span>
+      <span class="comp-total-val" id="comp-total">R$--</span>
+    </div>
+    <button class="btn-ok" onclick="document.getElementById('modal').classList.remove('show'); mostrarIdle();">Fechar</button>
+  </div>
+</div>
+
+<script>
+const CID = '{{ conector_id }}';
+const RING_MAX = 414.7;
+
+// ── Tarifa badge ──────────────────────────────────────────────
+function badgeClass(nome) {
+  if (nome === 'Pico')          return 'tariff-badge badge-pico';
+  if (nome === 'Fora de ponta') return 'tariff-badge badge-fora';
+  if (nome === 'Reduzido')      return 'tariff-badge badge-red';
+  return 'tariff-badge badge-normal';
+}
+
+// ── Atualizar painel ──────────────────────────────────────────
+function mostrarIdle() {
+  document.getElementById('idle-view').classList.add('show');
+  document.getElementById('active-view').style.display = 'none';
+}
+function mostrarAtivo() {
+  document.getElementById('idle-view').classList.remove('show');
+  document.getElementById('active-view').style.display = '';
+}
+function retomarPolling() {
+  clearInterval(intervalo); // idempotente — evita empilhar múltiplos timers
+  intervalo = setInterval(atualizar, 3000);
+}
+
+async function atualizar() {
+  try {
+    const r = await fetch(`/api/sessao/${CID}`);
+    if (r.status === 404) { mostrarIdle(); return; }
+
+    const d = await r.json();
+    if (d.erro) { mostrarIdle(); return; }
+
+    mostrarAtivo();
+    const c = d.conector;
+
+    // Saudação
+    if (c.usuario) {
+      const nome = c.usuario.nome.split(' ')[0];
+      document.getElementById('g-nome').textContent = `Olá, ${nome} 👋`;
+      document.getElementById('g-veiculo').textContent = c.usuario.veiculo;
+      document.getElementById('g-placa').textContent   = c.usuario.placa;
+      carregarHistorico(c.usuario.nome);
+    }
+
+    // Anel
+    const pct    = d.bateria_pct;
+    const offset = RING_MAX - (pct / 100) * RING_MAX;
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ring-pct').textContent = pct.toFixed(0) + '%';
+    document.getElementById('ring-eta').textContent = `≈ ${c.duracao_str} de sessão`;
+
+    // Stats
+    document.getElementById('s-kwh').innerHTML  = c.kwh_sessao.toFixed(1) + '<span class="stat-unit"> kWh</span>';
+    document.getElementById('s-custo').textContent = 'R$' + d.custo_atual.toFixed(2).replace('.', ',');
+    document.getElementById('s-pot').innerHTML  = c.potencia_kw.toFixed(1) + (c.balanceado ? '<span class="stat-unit" style="color:#D97706"> ⚡</span>' : '<span class="stat-unit"> kW</span>');
+
+    // Velocidade de carregamento (relativo à potência máxima do conector)
+    atualizarVelocidade(c.potencia_kw, c.pmax_kw);
+
+    // Tarifa
+    document.getElementById('t-nome').textContent  = d.tarifa_nome;
+    document.getElementById('t-preco').innerHTML   = 'R$' + d.tarifa_valor.toFixed(2).replace('.', ',') + '<span>/kWh</span>';
+    const badge = document.getElementById('t-badge');
+    badge.textContent  = d.tarifa_faixa;
+    badge.className    = badgeClass(d.tarifa_nome);
+
+  } catch(e) { /* silencioso */ }
+}
+
+// ── Velocidade de carregamento ─────────────────────────────────
+function atualizarVelocidade(potenciaAtual, potenciaMax) {
+  const pct = potenciaMax > 0 ? Math.min(100, (potenciaAtual / potenciaMax) * 100) : 0;
+  const tag  = document.getElementById('speed-tag');
+  const fill = document.getElementById('speed-bar-fill');
+
+  fill.style.width = pct + '%';
+
+  if (pct < 45) {
+    tag.textContent = 'Lento';    tag.className = 'speed-tag speed-lento';
+    fill.style.background = 'var(--amber)';
+  } else if (pct < 85) {
+    tag.textContent = 'Normal';   tag.className = 'speed-tag speed-normal';
+    fill.style.background = 'var(--muted)';
+  } else {
+    tag.textContent = 'Rápido';   tag.className = 'speed-tag speed-rapido';
+    fill.style.background = 'var(--green)';
+  }
+}
+
+// ── Histórico — carrossel ───────────────────────────────────────
+let _historicoCarregado = false;
+async function carregarHistorico(nomeUsuario) {
+  if (_historicoCarregado || !nomeUsuario) return;
+  try {
+    const r = await fetch(`/api/historico/${encodeURIComponent(nomeUsuario)}`);
+    const d = await r.json();
+    const carrossel = document.getElementById('carousel');
+    document.getElementById('history-count').textContent = d.total + (d.total === 1 ? ' sessão' : ' sessões');
+
+    if (!d.historico || d.historico.length === 0) {
+      carrossel.innerHTML = '<div class="history-empty">Esta é sua primeira recarga por aqui 👋</div>';
+      _historicoCarregado = true;
+      return;
+    }
+
+    carrossel.innerHTML = d.historico.map(s => {
+      const data = new Date(s.fim).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+      const hora = s.fim.slice(11, 16);
+      return `
+        <div class="history-card">
+          <div class="history-date">${data} · ${hora}</div>
+          <div class="history-kwh">${s.kwh_total.toFixed(1)}<span> kWh</span></div>
+          <div class="history-cost">R$${s.valor_total.toFixed(2).replace('.', ',')}</div>
+        </div>`;
+    }).join('');
+    _historicoCarregado = true;
+  } catch(e) { /* silencioso */ }
+}
+
+// ── Assistente ────────────────────────────────────────────────
+function addMsg(texto, tipo) {
+  const msgs = document.getElementById('msgs');
+  const el   = document.createElement('div');
+  el.className = 'msg msg-' + tipo;
+  el.textContent = texto;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function enviarMsg() {
+  const input = document.getElementById('chat-input');
+  const txt   = input.value.trim();
+  if (!txt) return;
+  addMsg(txt, 'user');
+  input.value = '';
+
+  try {
+    const r = await fetch('/api/assistente', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({pergunta: txt, conector_id: CID})
+    });
+    const d = await r.json();
+    addMsg(d.resposta, 'bot');
+  } catch(e) {
+    addMsg('Serviço temporariamente indisponível.', 'bot');
+  }
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') enviarMsg();
+});
+
+// ── Encerrar sessão ───────────────────────────────────────────
+async function encerrar() {
+  const btn = document.getElementById('btn-end');
+  btn.disabled = true;
+  btn.textContent = 'Encerrando...';
+
+  // Para o polling ANTES da requisição, evitando race condition
+  // entre a atualização automática e o encerramento da sessão.
+  clearInterval(intervalo);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const r = await fetch(`/api/sessao/encerrar/${CID}`, {
+      method: 'POST',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!r.ok) {
+      throw new Error('Servidor respondeu com erro ' + r.status);
+    }
+
+    const d = await r.json();
+
+    if (!d.ok) {
+      addMsg(d.erro || 'Não foi possível encerrar a sessão.', 'bot');
+      btn.disabled = false;
+      btn.textContent = 'Encerrar sessão';
+      intervalo = setInterval(atualizar, 3000);
+      return;
+    }
+
+    const comp = d.comprovante;
+    document.getElementById('comp-ts').textContent = comp.timestamp;
+    document.getElementById('comp-total').textContent = 'R$' + comp.valor_total.toFixed(2).replace('.', ',');
+
+    const rows = [
+      ['Conector',  comp.conector_id],
+      ['Usuário',   comp.usuario?.nome || '--'],
+      ['Veículo',   comp.usuario?.veiculo || '--'],
+      ['Placa',     comp.usuario?.placa || '--'],
+      ['Duração',   comp.duracao],
+      ['Energia',   comp.kwh_total.toFixed(1) + ' kWh'],
+      ['Tarifa',    comp.tarifa_aplicada],
+      ['Bateria final', comp.bateria_final + '%'],
+    ];
+
+    document.getElementById('comp-rows').innerHTML = rows.map(([l, v]) =>
+      `<div class="comp-row"><span class="comp-label">${l}</span><span class="comp-val">${v}</span></div>`
+    ).join('');
+
+    document.getElementById('modal').classList.add('show');
+
+    // Sessão terminou de verdade — mostra a tela de espera por trás do modal
+    // e retoma o polling, para detectar automaticamente uma nova sessão
+    // que o operador iniciar neste mesmo conector, sem precisar recarregar.
+    mostrarIdle();
+    retomarPolling();
+
+  } catch(e) {
+    clearTimeout(timeoutId);
+    btn.disabled = false;
+    btn.textContent = 'Encerrar sessão';
+    addMsg('Não foi possível encerrar: ' + (e.message || 'erro de conexão') + '. Tente novamente.', 'bot');
+    // Retoma o polling já que o encerramento falhou
+    intervalo = setInterval(atualizar, 3000);
+  }
+}
+
+// ── Loop ──────────────────────────────────────────────────────
+atualizar();
+let intervalo = setInterval(atualizar, 3000);
+</script>
+</body>
+</html>

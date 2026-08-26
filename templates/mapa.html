@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChargeGrid — Mapa de Conectores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E8001C;--green:#00C896;--orange:#F5A623;--blue:#4A90D9;
+  --bg:#0D1117;--surface:#111520;--surface2:#0A0C10;
+  --border:#1E2436;--border2:#2D3748;
+  --text:#E8EAF0;--muted:#6B7280;--subtle:#4A5568;
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px}
+
+/* TOPBAR */
+.topbar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-img{height:26px;width:auto;mix-blend-mode:screen}
+.logo-name{font-size:14px;font-weight:500;color:var(--text)}
+.logo-sub{font-size:10px;color:var(--subtle);font-family:var(--mono)}
+.back-link{margin-left:auto;font-size:12px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;transition:background .15s}
+.back-link:hover{background:var(--surface);color:var(--text)}
+
+/* LAYOUT */
+.body{display:grid;grid-template-columns:1fr 280px;min-height:calc(100vh - 52px)}
+.main{padding:28px;display:flex;flex-direction:column;align-items:center}
+.sidebar{padding:20px;background:var(--surface2);border-left:1px solid var(--border)}
+.label{font-size:10px;color:var(--subtle);font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+
+.page-title{font-size:18px;font-weight:500;color:var(--text);margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--muted);margin-bottom:28px}
+
+/* PLANTA */
+.plant{
+  position:relative;width:100%;max-width:640px;
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:36px;
+}
+.plant-grid-bg{
+  position:absolute;inset:0;border-radius:16px;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:32px 32px;opacity:.25;pointer-events:none;
+}
+.entrance{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:26px;color:var(--subtle);font-size:11px;font-family:var(--mono);
+}
+.entrance-line{flex:1;height:1px;background:var(--border)}
+.entrance-arrow{color:var(--muted)}
+
+.rows{position:relative;display:flex;flex-direction:column;gap:20px}
+.row{display:flex;gap:20px;justify-content:center}
+
+/* VAGA / SPOT */
+.spot{
+  width:150px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:12px;
+  padding:14px;cursor:pointer;transition:transform .15s, border-color .15s, box-shadow .15s;
+  position:relative;overflow:hidden;
+}
+.spot:hover{transform:translateY(-3px)}
+.spot::before{
+  content:'';position:absolute;top:0;left:0;width:100%;height:4px;
+}
+.spot.st-active{border-color:#134D32}
+.spot.st-active::before{background:var(--green)}
+.spot.st-idle{border-color:var(--border2)}
+.spot.st-idle::before{background:var(--border2)}
+.spot.st-alerta{border-color:#4D3D14}
+.spot.st-alerta::before{background:var(--orange)}
+.spot.st-falha{border-color:#4D1A1A}
+.spot.st-falha::before{background:var(--red)}
+.spot.st-falha{cursor:default}
+
+.spot-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.spot-id{font-size:12px;font-family:var(--mono);font-weight:500;color:var(--text)}
+.spot-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-active{background:#0A2E1E;color:var(--green)}
+.icon-idle{background:var(--border);color:var(--subtle)}
+.icon-alerta{background:#2E2410;color:var(--orange)}
+.icon-falha{background:#2E0A0A;color:var(--red)}
+
+.spot-power{font-size:16px;font-weight:500;font-family:var(--mono);color:var(--text);margin-bottom:2px}
+.spot-power span{font-size:9px;color:var(--muted);font-weight:400}
+.spot-user{font-size:10px;color:var(--muted);line-height:1.4;min-height:26px}
+.spot-user b{color:#8892A4;display:block}
+
+.spot-badge{
+  font-size:9px;padding:2px 7px;border-radius:3px;font-weight:500;
+  display:inline-block;margin-top:8px;
+}
+.badge-active{background:#0A2E1E;color:var(--green)}
+.badge-idle{background:var(--border);color:var(--subtle)}
+.badge-alerta{background:#2E2410;color:var(--orange)}
+.badge-falha{background:#2E0A0A;color:var(--red)}
+
+/* CABO ANIMADO (indicador de plugado) */
+.spot-plug{
+  position:absolute;bottom:8px;right:10px;width:14px;height:14px;
+  border-radius:50%;
+}
+.spot-plug.blink{background:var(--green);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* LEGENDA */
+.legend{display:flex;gap:18px;justify-content:center;margin-top:28px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+.dot-green{background:var(--green)}
+.dot-gray{background:var(--border2)}
+.dot-orange{background:var(--orange)}
+.dot-red{background:var(--red)}
+
+/* SIDEBAR */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px}
+.summary-val{font-size:18px;font-weight:500;font-family:var(--mono)}
+.summary-val.green{color:var(--green)}
+.summary-val.red{color:var(--red)}
+.summary-label{font-size:9px;color:var(--subtle);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+.detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;min-height:120px}
+.detail-empty{font-size:11px;color:var(--subtle);text-align:center;padding:24px 0;line-height:1.6}
+.detail-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+.detail-row:last-child{border-bottom:none}
+.detail-label{color:var(--muted)}
+.detail-val{font-family:var(--mono);color:var(--text)}
+.detail-cta{
+  width:100%;margin-top:12px;padding:9px;border-radius:7px;border:none;
+  font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;
+  display:block;text-align:center;transition:opacity .15s;
+}
+.cta-green{background:var(--green);color:#052E1F}
+.cta-red{background:var(--red);color:#fff}
+.detail-cta:hover{opacity:.9}
+
+/* MODAL (reaproveitado do operador) */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;align-items:center;justify-content:center;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:360px}
+.modal-title{font-size:15px;font-weight:500;color:var(--text);margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--muted);margin-bottom:18px;font-family:var(--mono)}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:5px;display:block}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;transition:border-color .15s}
+.form-input:focus{border-color:#2D3748}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.btn-cancel{flex:1;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:9px;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.btn-confirm{flex:1;background:var(--red);border:none;color:#fff;border-radius:7px;padding:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s}
+.btn-confirm:hover{opacity:.9}
+.btn-confirm:disabled{opacity:.5;cursor:not-allowed}
+
+/* TOAST */
+.toast-container{position:fixed;top:64px;right:16px;z-index:400;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:10px;min-width:260px;max-width:320px;animation:slideIn .25s ease;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.toast.ok .toast-dot{background:var(--green)}
+.toast.alerta .toast-dot{background:var(--orange)}
+.toast.erro .toast-dot{background:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="/">
+    <img src="/static/goodwe_logo.png" alt="GoodWe" class="logo-img">
+    <div>
+      <div class="logo-name">ChargeGrid Intelligence</div>
+      <div class="logo-sub">mapa de conectores</div>
+    </div>
+  </a>
+  <a href="/operador" class="back-link">← Voltar ao painel</a>
+</div>
+
+<div class="body">
+  <div class="main">
+    <div class="page-title">Planta do estacionamento</div>
+    <div class="page-sub">Clique em um conector para ver detalhes ou iniciar uma sessão</div>
+
+    <div class="plant">
+      <div class="plant-grid-bg"></div>
+      <div class="entrance">
+        <div class="entrance-line"></div>
+        <span class="entrance-arrow">↓</span> ENTRADA <span class="entrance-arrow">↓</span>
+        <div class="entrance-line"></div>
+      </div>
+
+      <div class="rows">
+        <div class="row">
+          <div class="spot" data-id="C-01" onclick="selecionar('C-01')"></div>
+          <div class="spot" data-id="C-02" onclick="selecionar('C-02')"></div>
+          <div class="spot" data-id="C-03" onclick="selecionar('C-03')"></div>
+        </div>
+        <div class="row">
+          <div class="spot" data-id="C-04" onclick="selecionar('C-04')"></div>
+          <div class="spot" data-id="C-05" onclick="selecionar('C-05')"></div>
+          <div class="spot" data-id="C-06" onclick="selecionar('C-06')"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot dot-green"></span>Carregando</div>
+      <div class="legend-item"><span class="legend-dot dot-gray"></span>Disponível</div>
+      <div class="legend-item"><span class="legend-dot dot-orange"></span>Balanceamento ativo</div>
+      <div class="legend-item"><span class="legend-dot dot-red"></span>Falha</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="label">Resumo em tempo real</div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-val green" id="sm-ativos">--</div>
+        <div class="summary-label">ativos</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sm-livres">--</div>
+        <div class="summary-label">livres</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sm-potencia">-- kW</div>
+        <div class="summary-label">potência</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val red" id="sm-falhas">--</div>
+        <div class="summary-label">falhas</div>
+      </div>
+    </div>
+
+    <div class="label">Conector selecionado</div>
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-empty">Clique em um conector<br>na planta para ver detalhes</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INICIAR SESSÃO -->
+<div class="modal-bg" id="modal-iniciar">
+  <div class="modal">
+    <div class="modal-title">Iniciar sessão</div>
+    <div class="modal-sub" id="modal-sub">Conector --</div>
+    <div class="form-group">
+      <label class="form-label">Nome do usuário</label>
+      <input class="form-input" id="m-nome" type="text" placeholder="Ex: Ana Clara">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Veículo</label>
+      <input class="form-input" id="m-veiculo" type="text" placeholder="Ex: BYD Seal 2024">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Placa</label>
+      <input class="form-input" id="m-placa" type="text" placeholder="Ex: ABC-1D23" maxlength="8">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-confirm" id="btn-confirm" onclick="confirmarIniciar()">Iniciar sessão</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+let ultimoDados = {};
+let selecionadoId = null;
+
+function statusInfo(cod) {
+  if (cod === 3) return { classe:'st-active', icon:'icon-active', badge:'badge-active', label:'Carregando', plug:true };
+  if (cod === 5) return { classe:'st-falha',  icon:'icon-falha',  badge:'badge-falha',  label:'Falha',      plug:false };
+  if (cod === 2) return { classe:'st-alerta', icon:'icon-alerta', badge:'badge-alerta', label:'Handshake',  plug:false };
+  return               { classe:'st-idle',   icon:'icon-idle',   badge:'badge-idle',   label:'Disponível', plug:false };
+}
+
+function renderMapa(conectores, demanda) {
+  conectores.forEach(c => {
+    const el = document.querySelector(`.spot[data-id="${c.id}"]`);
+    if (!el) return;
+
+    let info = statusInfo(c.status_cod);
+    // se está carregando E o balanceamento global está em alerta/crítico, destaca como alerta
+    if (c.status_cod === 3 && c.balanceado) {
+      info = { classe:'st-alerta', icon:'icon-alerta', badge:'badge-alerta', label:'Balanceado', plug:true };
+    }
+
+    el.className = 'spot ' + info.classe;
+    const kw  = c.status_cod === 3 ? c.potencia_kw.toFixed(1) : '—';
+    const usr = c.usuario ? `<b>${c.usuario.nome}</b>${c.usuario.veiculo}` : (c.falha_cod ? `Erro ${c.falha_cod}` : 'Toque para iniciar');
+
+    el.innerHTML = `
+      <div class="spot-top">
+        <span class="spot-id">${c.id}</span>
+        <div class="spot-icon ${info.icon}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+      </div>
+      <div class="spot-power">${kw}<span> kW</span></div>
+      <div class="spot-user">${usr}</div>
+      <span class="spot-badge ${info.badge}">${info.label}</span>
+      ${info.plug ? '<div class="spot-plug blink"></div>' : ''}
+    `;
+  });
+
+  const ativos = conectores.filter(c => c.status_cod === 3).length;
+  const livres = conectores.filter(c => c.status_cod === 0 || c.status_cod === 1).length;
+  const falhas = conectores.filter(c => c.status_cod === 5).length;
+
+  document.getElementById('sm-ativos').textContent    = ativos;
+  document.getElementById('sm-livres').textContent    = livres;
+  document.getElementById('sm-potencia').textContent  = demanda.potencia_total_kw + ' kW';
+  document.getElementById('sm-falhas').textContent    = falhas;
+
+  if (selecionadoId) renderDetalhe(selecionadoId);
+}
+
+function selecionar(cid) {
+  selecionadoId = cid;
+  renderDetalhe(cid);
+}
+
+function renderDetalhe(cid) {
+  const c = (ultimoDados.conectores || []).find(x => x.id === cid);
+  const panel = document.getElementById('detail-panel');
+  if (!c) return;
+
+  if (c.status_cod === 5) {
+    panel.innerHTML = `
+      <div class="detail-row"><span class="detail-label">Conector</span><span class="detail-val">${c.id}</span></div>
+      <div class="detail-row"><span class="detail-label">Status</span><span class="detail-val" style="color:var(--red)">Falha</span></div>
+      <div class="detail-row"><span class="detail-label">Código</span><span class="detail-val">${c.falha_cod || '--'}</span></div>
+      <div class="detail-empty" style="padding-top:14px">Verificar conexão RS-485</div>`;
+    return;
+  }
+
+  if (c.status_cod === 3) {
+    panel.innerHTML = `
+      <div class="detail-row"><span class="detail-label">Conector</span><span class="detail-val">${c.id}</span></div>
+      <div class="detail-row"><span class="detail-label">Usuário</span><span class="detail-val">${c.usuario?.nome || '--'}</span></div>
+      <div class="detail-row"><span class="detail-label">Veículo</span><span class="detail-val">${c.usuario?.veiculo || '--'}</span></div>
+      <div class="detail-row"><span class="detail-label">Potência</span><span class="detail-val">${c.potencia_kw.toFixed(1)} kW</span></div>
+      <div class="detail-row"><span class="detail-label">Energia</span><span class="detail-val">${c.kwh_sessao.toFixed(1)} kWh</span></div>
+      <div class="detail-row"><span class="detail-label">Duração</span><span class="detail-val">${c.duracao_str}</span></div>
+      <a href="/usuario/${c.id}" class="detail-cta cta-green">Ver painel do usuário</a>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="detail-row"><span class="detail-label">Conector</span><span class="detail-val">${c.id}</span></div>
+    <div class="detail-row"><span class="detail-label">Status</span><span class="detail-val">Disponível</span></div>
+    <button class="detail-cta cta-red" onclick="abrirModal('${c.id}')">＋ Iniciar sessão</button>`;
+}
+
+// ── Modal (mesma lógica do operador) ───────────────────────────
+let _cidModal = null;
+function abrirModal(cid) {
+  _cidModal = cid;
+  document.getElementById('modal-sub').textContent = 'Conector ' + cid;
+  document.getElementById('m-nome').value = '';
+  document.getElementById('m-veiculo').value = '';
+  document.getElementById('m-placa').value = '';
+  document.getElementById('modal-iniciar').classList.add('show');
+  setTimeout(() => document.getElementById('m-nome').focus(), 50);
+}
+function fecharModal() {
+  document.getElementById('modal-iniciar').classList.remove('show');
+  _cidModal = null;
+}
+async function confirmarIniciar() {
+  const nome    = document.getElementById('m-nome').value.trim();
+  const veiculo = document.getElementById('m-veiculo').value.trim();
+  const placa   = document.getElementById('m-placa').value.trim().toUpperCase();
+  if (!nome || !veiculo || !placa) { toast('Preencha todos os campos.', 'alerta'); return; }
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true; btn.textContent = 'Iniciando...';
+  try {
+    const r = await fetch('/api/sessao/iniciar/' + _cidModal, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nome, veiculo, placa})
+    });
+    const d = await r.json();
+    if (d.ok) { toast('Sessão iniciada em ' + _cidModal, 'ok'); fecharModal(); atualizar(); }
+    else { toast(d.erro || 'Erro ao iniciar.', 'erro'); }
+  } catch(e) { toast('Erro de conexão.', 'erro'); }
+  btn.disabled = false; btn.textContent = 'Iniciar sessão';
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function toast(msg, tipo='ok') {
+  const c  = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + tipo;
+  el.innerHTML = '<span class="toast-dot"></span><span>' + msg + '</span>';
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 8000);
+}
+
+// ── Loop principal ────────────────────────────────────────────
+async function atualizar() {
+  try {
+    const d = await fetch('/api/conectores').then(r => r.json());
+    ultimoDados = d;
+    renderMapa(d.conectores, d.demanda);
+  } catch(e) {}
+}
+
+atualizar();
+setInterval(atualizar, 3000);
+</script>
+</body>
+</html>

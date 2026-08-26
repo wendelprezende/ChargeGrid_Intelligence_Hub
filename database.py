@@ -98,6 +98,44 @@ def get_sessoes_do_dia():
     return [dict(r) for r in rows]
 
 
+def contar_sessoes_do_dia() -> int:
+    """Conta sessões de hoje sem carregar todas as linhas — usado para decidir se o seed já rodou."""
+    conn = get_conn()
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    row = conn.execute(
+        "SELECT COUNT(*) as n FROM sessoes WHERE inicio LIKE ?", (f'{hoje}%',)
+    ).fetchone()
+    conn.close()
+    return row['n'] if row else 0
+
+
+def inserir_sessoes_historicas(sessoes: list):
+    """
+    Insere em lote sessões já ENCERRADAS, simulando histórico do dia.
+    Cada item de `sessoes` é uma tupla:
+    (conector_id, usuario, veiculo, placa, inicio, fim, kwh_total, valor_total, tarifa_aplicada)
+    """
+    if not sessoes:
+        return
+    conn = get_conn()
+    conn.executemany(
+        '''INSERT INTO sessoes
+           (conector_id, usuario, veiculo, placa, inicio, fim, kwh_total, valor_total, tarifa_aplicada, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'encerrada')''',
+        sessoes
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_sessao_por_id(sessao_id):
+    """Busca uma sessão específica pelo ID — usado na página de comprovante."""
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM sessoes WHERE id = ?", (sessao_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 def get_sessao_ativa(conector_id):
     conn = get_conn()
     row = conn.execute(
@@ -106,6 +144,32 @@ def get_sessao_ativa(conector_id):
     ).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def criar_sessao_ativa(conector_id, usuario, veiculo, placa):
+    """Insere uma nova sessão ativa no banco — chamado ao iniciar uma sessão."""
+    conn = get_conn()
+    inicio = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    conn.execute(
+        '''INSERT INTO sessoes (conector_id, usuario, veiculo, placa, inicio, status)
+           VALUES (?, ?, ?, ?, ?, 'ativa')''',
+        (conector_id, usuario, veiculo, placa, inicio)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_historico_por_usuario(nome, limite=5):
+    """Retorna as últimas N sessões encerradas de um usuário, mais recentes primeiro."""
+    conn = get_conn()
+    rows = conn.execute(
+        '''SELECT * FROM sessoes
+           WHERE usuario = ? AND status = 'encerrada'
+           ORDER BY fim DESC LIMIT ?''',
+        (nome, limite)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 # ── Escrita ───────────────────────────────────────────────────
