@@ -2,21 +2,40 @@
 load_balancer.py — ChargeGrid Intelligence Hub
 Motor de balanceamento dinâmico de carga (Dynamic Load Balancing).
 
-Lógica:
-    < 80% do limite  → operação normal, restaura potência se estava balanceado
-    80–95% do limite → redução proporcional suave (alvo: 78% do limite)
-    ≥ 95% do limite  → redução proporcional crítica (alvo: 85% do limite)
+Lógica com HISTERESE (evita oscilação/flapping perto dos limiares):
+    entra em alerta em   ≥ 80%  →  só sai de volta ao normal quando < 65%
+    entra em crítico em  ≥ 95%  →  só sai do crítico quando       < 85%
+
+Sem histerese, reduzir a potência derruba a demanda abaixo do limiar de
+entrada, o que restaura a potência total no próximo ciclo, o que sobe a
+demanda de novo acima do limiar — um ciclo de liga/desliga a cada poll.
+A histerese cria uma "zona morta" entre entrada e saída, estabilizando
+o comportamento visível no painel.
+
+Além da histerese por percentual, existe um COOLDOWN DE TEMPO: uma
+transição de estado (ativar ou desativar o balanceamento) só é aceita
+se pelo menos 20 segundos se passaram desde a última transição. Isso
+garante uma frequência de ocorrência previsível e visualmente estável,
+independente de quão rápido a demanda oscile entre os limiares.
 
 O mínimo por conector é 1.4 kW (especificação HCA G2).
 """
+
+import time
 
 from modbus_simulator import simulator
 from database import get_config, registrar_balanceamento
 
 
-THRESHOLD_ALERTA   = 0.80   # 80%
-THRESHOLD_CRITICO  = 0.95   # 95%
-POTENCIA_MIN_KW    = 1.4    # mínimo HCA G2
+THRESHOLD_ALERTA        = 0.80   # entra em alerta a partir daqui
+THRESHOLD_ALERTA_SAIDA  = 0.65   # só volta ao normal abaixo daqui
+THRESHOLD_CRITICO       = 0.95   # entra em crítico a partir daqui
+THRESHOLD_CRITICO_SAIDA = 0.85   # só sai do crítico abaixo daqui (cai para alerta)
+POTENCIA_MIN_KW         = 1.4    # mínimo HCA G2
+COOLDOWN_TRANSICAO_S    = 20     # intervalo mínimo entre ativação/desativação
+
+_estado_atual        = 'ok'  # memória entre chamadas — 'ok' | 'alerta' | 'critico'
+_ultima_transicao_ts = float('-inf')  # garante que a 1ª transição real não espere o cooldown
 
 
 def verificar_e_balancear() -> dict:
@@ -24,48 +43,84 @@ def verificar_e_balancear() -> dict:
     Avalia a demanda atual e age se necessário.
     Retorna dict com estado da rede para exibição no painel.
     """
-    limite_kw     = float(get_config('limite_contratado_kw') or 55.0)
+    global _estado_atual, _ultima_transicao_ts
+
+    limite_kw      = float(get_config('limite_contratado_kw') or 55.0)
     potencia_total = simulator.get_potencia_total_kw()
-    pct           = potencia_total / limite_kw
+    pct            = potencia_total / limite_kw
+
+    estado_calculado = _proximo_estado(_estado_atual, pct)
+    agora            = time.time()
+
+    if estado_calculado != _estado_atual:
+        if (agora - _ultima_transicao_ts) < COOLDOWN_TRANSICAO_S:
+            # Ainda dentro do cooldown — mantém o estado atual por mais tempo,
+            # mesmo que a condição de transição já tenha sido satisfeita.
+            estado_calculado = _estado_atual
+        else:
+            _ultima_transicao_ts = agora
+
+    _estado_atual = estado_calculado
+    novo_estado   = estado_calculado
 
     estado = {
         'potencia_total_kw': potencia_total,
         'limite_kw':         limite_kw,
         'percentual':        round(pct * 100, 1),
         'acao':              'normal',
-        'nivel':             'ok',           # ok | alerta | critico
+        'nivel':             novo_estado,
         'mensagem':          'Operando dentro do limite.',
     }
 
     ativos = [c for c in simulator.get_all() if c['status_cod'] == 3]
 
-    if pct >= THRESHOLD_CRITICO:
+    if novo_estado == 'critico':
         alvo_total = limite_kw * 0.85
         _redistribuir(ativos, alvo_total)
         estado.update(
             acao     = 'reducao_critica',
-            nivel    = 'critico',
             mensagem = f'⚡ Demanda em {estado["percentual"]}% — balanceamento crítico ativo.',
         )
         registrar_balanceamento(potencia_total, 'critico', estado['mensagem'])
 
-    elif pct >= THRESHOLD_ALERTA:
+    elif novo_estado == 'alerta':
         alvo_total = limite_kw * 0.78
         _redistribuir(ativos, alvo_total)
         estado.update(
             acao     = 'reducao_suave',
-            nivel    = 'alerta',
             mensagem = f'⚠ Demanda em {estado["percentual"]}% — balanceamento preventivo ativo.',
         )
         registrar_balanceamento(potencia_total, 'alerta', estado['mensagem'])
 
     else:
-        # Dentro do limite: restaura conectores que estavam balanceados
+        # Dentro do limite (com histerese já aplicada): restaura conectores balanceados
         for c in ativos:
             if c['balanceado']:
                 simulator.restaurar_potencia(c['id'])
 
     return estado
+
+
+def _proximo_estado(estado_anterior: str, pct: float) -> str:
+    """Decide o próximo estado com histerese, evitando flapping perto dos limiares."""
+    if estado_anterior == 'critico':
+        if pct < THRESHOLD_CRITICO_SAIDA:
+            return 'alerta' if pct >= THRESHOLD_ALERTA_SAIDA else 'ok'
+        return 'critico'
+
+    if estado_anterior == 'alerta':
+        if pct >= THRESHOLD_CRITICO:
+            return 'critico'
+        if pct < THRESHOLD_ALERTA_SAIDA:
+            return 'ok'
+        return 'alerta'
+
+    # estado_anterior == 'ok'
+    if pct >= THRESHOLD_CRITICO:
+        return 'critico'
+    if pct >= THRESHOLD_ALERTA:
+        return 'alerta'
+    return 'ok'
 
 
 def _redistribuir(ativos: list, alvo_total_kw: float):
@@ -92,5 +147,5 @@ if __name__ == '__main__':
 
     print('[LB] Estado inicial:')
     r = verificar_e_balancear()
-    print(f'  {r["potencia_total_kw"]} kW / {r["limite_kw"]} kW — {r["percentual"]}% — {r["acao"]}')
+    print(f'  {r["potencia_total_kw"]} kW / {r["limite_kw"]} kW — {r["percentual"]}% — {r["nivel"]}')
     print('[OK] load_balancer.py funcionando.')

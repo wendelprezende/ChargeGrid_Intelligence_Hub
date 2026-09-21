@@ -75,8 +75,16 @@ def _gerar_sessoes_da_hora(hora: int, minuto_max: int, hoje: datetime, config: d
         conector = random.choice(CONECTORES)
         pmax     = POTENCIA_CONECTOR[conector]
 
+        # Sorteia a ENERGIA entregue dentro de uma faixa realista de recarga
+        # comercial (nem uma "tomada rápida" de segundos, nem uma bateria
+        # inteira). A duração é derivada disso, não o contrário — evita
+        # sessões de poucos minutos gerando valores de centavos.
+        kwh_total      = round(random.uniform(10, 32), 2)
+        potencia_media = pmax * random.uniform(0.6, 0.95)
+        duracao_min    = round((kwh_total / potencia_media) * 60)
+        duracao_min    = max(20, min(150, duracao_min))  # limites de exibição plausíveis
+
         minuto_inicio = random.randint(0, max(0, minuto_max - 5))
-        duracao_min   = random.randint(15, 75)
         inicio_dt = hoje.replace(hour=hora, minute=0, second=0, microsecond=0) + timedelta(minutes=minuto_inicio)
         fim_dt    = inicio_dt + timedelta(minutes=duracao_min)
 
@@ -87,10 +95,11 @@ def _gerar_sessoes_da_hora(hora: int, minuto_max: int, hoje: datetime, config: d
         if fim_dt <= inicio_dt:
             continue
 
-        duracao_h    = (fim_dt - inicio_dt).total_seconds() / 3600
-        potencia_media = pmax * random.uniform(0.55, 0.92)  # carregamento real oscila abaixo do máximo
-        kwh_total    = round(potencia_media * duracao_h, 2)
-        valor_total  = round(kwh_total * tarifa_valor, 2)
+        # Importante: NÃO recalculamos kwh_total a partir da duração cortada
+        # pelo limite "agora". Preferimos manter o valor da recarga sempre
+        # realista (a pequena inconsistência cosmética entre duração exibida
+        # e energia é imperceptível; um valor de centavos não é).
+        valor_total = round(kwh_total * tarifa_valor, 2)
 
         sessoes.append((
             conector,
