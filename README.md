@@ -83,4 +83,4 @@ Veja o [`MANUAL_DE_TESTES.md`](./MANUAL_DE_TESTES.md) para o roteiro completo de
 
 ## Equipe 03 — FIAP EV Challenge 2026
 
-Anna Karla · Arthur Araújo · Beatriz da Silva · Daniel Alejandro · Victor Hugo Lavaqui · Wendel Pedro
+Arthur Araújo · Daniel Alejandro · Victor Hugo Lavaqui · Wendel Pedro
