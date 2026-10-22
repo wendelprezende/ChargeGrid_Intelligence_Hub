@@ -213,16 +213,12 @@ A **histerese** (duas faixas, uma para entrar e outra para sair do modo de prote
 | Indicador | Resultado | Como medir |
 | --- | --- | --- |
 | Conectores simulados | **6** | Configuração do projeto |
-| Limite de demanda contratada usado nos testes | `[ ] kW` | Parâmetro do balanceador |
-| Potência de pico **sem** controle | `[ ] kW` (`[ ]`% do limite) | Rodar cenário com 6 sessões e balanceador desligado |
-| Potência de pico **com** controle | `[ ] kW` (`[ ]`% do limite) | Mesmo cenário, balanceador ligado |
-| Ultrapassagens do limite com controle | `[ ]` (meta: **0**) | Contar eventos de potência > limite |
-| Tempo de resposta do balanceador | `[ ] s` (1 ciclo de leitura) | Intervalo entre leitura e ajuste |
-| Sessões de teste executadas | `[ ]` | Tabela de sessões no SQLite |
-| Energia total faturada | `[ ] kWh` | Soma de kWh das sessões |
-| Receita simulada | `R$ [ ]` | Soma dos valores das sessões |
-| Ticket médio por sessão | `R$ [ ]` | Receita ÷ nº de sessões |
-| Cenários de teste automatizados aprovados | `[ ] / [ ]` | Resultado dos testes Playwright |
+| Limite de demanda contratada usado nos testes | `55kW` | Parâmetro do balanceador |
+| Ultrapassagens do limite com controle | `3` (meta: **0**) | Contar eventos de potência > limite |
+| Tempo de resposta do balanceador | `3s` (1 ciclo de leitura) | Intervalo entre leitura e ajuste |
+| Energia total faturada | `530.1kWh` | Soma de kWh das sessões |
+| Receita simulada | `R$474,89` | Soma dos valores das sessões |
+| Ticket médio por sessão | `R$21,59` | Receita ÷ nº de sessões |
 | Bugs críticos encontrados e corrigidos | **6** | Ver tabela 5.3 |
 
 **Exemplo de cálculo (ilustrativo, para o capítulo de resultados):** com 6 conectores de 7 kW, a demanda potencial é 42 kW. Se o limite contratado fosse 30 kW, sem controle haveria **140%** do limite. Com limiar de 80% (24 kW), a redução proporcional leva cada conector a **4 kW**, mantendo o total abaixo do contratado. *Substitua pelos valores reais do seu cenário.*
@@ -346,8 +342,8 @@ O fator de emissão da rede brasileira varia por ano (MCTI); use o valor oficial
 
 ```bash
 # 1. Clonar
-git clone https://github.com/<SEU-USUARIO>/<NOME-DO-REPO>.git
-cd <NOME-DO-REPO>
+git clone https://github.com/wendelprezende/ChargeGrid_Intelligence_Hub.git
+cd ChargeGrid_Intelligence_Hub
 
 # 2. Ambiente virtual
 python -m venv venv
@@ -364,31 +360,6 @@ python app.py                  # ajuste para o nome do seu arquivo principal
 Acesse `http://localhost:5000` (ou o endereço/porta que o seu app exibir). Para abrir no celular via QR code, use o IP da máquina na mesma rede.
 
 > ⚠️ Após alterar arquivos Python, **pare e reinicie o servidor** (Ctrl+C e rodar de novo); apenas salvar não aplica as mudanças.
-
----
-
-## 9. Estrutura do repositório
-
-> Ajuste os nomes para refletir exatamente o seu projeto.
-
-```text
-.
-├── app.py                 # servidor Flask e rotas
-├── database.py            # SQLite: sessões e histórico
-├── modbus_sim.py          # simulação MODBUS (HCA G2)
-├── load_balancer.py       # balanceamento dinâmico com histerese
-├── billing.py             # tarifação e cobrança por sessão
-├── assistant.py           # assistente virtual
-├── templates/             # HTML (operador e usuário)
-├── static/                # CSS e JS
-├── tests/                 # testes Playwright
-├── docs/
-│   ├── img/               # prints e diagramas
-│   └── anteriores/        # entregas das Sprints 1 e 2
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
 
 ---
 
