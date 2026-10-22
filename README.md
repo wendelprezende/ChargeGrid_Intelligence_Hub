@@ -20,7 +20,6 @@ Plataforma de gestão para **eletropostos comerciais** que transforma cada sess�
 6. [Avaliação crítica: sustentabilidade e inovação](#6-avaliação-crítica-sustentabilidade-e-inovação)
 7. [Referências, frameworks, ferramentas e sensores](#7-referências-e-conexões-frameworks-ferramentas-linguagens-e-sensores)
 8. [Como executar](#8-como-executar)
-9. [Estrutura do repositório](#9-estrutura-do-repositório)
 
 ---
 
