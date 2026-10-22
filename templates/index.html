@@ -55,27 +55,19 @@ body::after{
 /* LOGO */
 .logo-wrap{display:flex;justify-content:center;margin-bottom:28px}
 .logo{
-  height:44px;width:auto;
+  height:64px;width:auto;
   /* fix fundo branco em PNG sobre fundo escuro */
   mix-blend-mode:screen;filter:brightness(1.05);
 }
 
-.eyebrow{
-  font-size:10px;color:var(--subtle);font-family:var(--mono);
-  letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;
-}
 h1{font-size:24px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:-0.3px}
 h1 span{color:var(--red)}
-.subtitle{
-  font-size:13px;color:var(--muted);line-height:1.7;
-  margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;
-}
 
 /* CHARGER HERO */
 .charger-hero{display:flex;align-items:center;justify-content:center;margin-bottom:22px;position:relative;padding:6px 0}
-.charger-glow{position:absolute;width:150px;height:150px;background:radial-gradient(circle, rgba(232,0,28,.22) 0%, rgba(232,0,28,0) 70%);border-radius:50%;animation:glowPulse 2.4s ease-in-out infinite}
+.charger-glow{position:absolute;width:190px;height:190px;background:radial-gradient(circle, rgba(232,0,28,.22) 0%, rgba(232,0,28,0) 70%);border-radius:50%;animation:glowPulse 2.4s ease-in-out infinite}
 @keyframes glowPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
-.charger-img{height:110px;width:auto;position:relative;z-index:1;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.charger-img{height:155px;width:auto;position:relative;z-index:1;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 
 /* STATUS AO VIVO */
 .live-val{transition:color .2s}
@@ -117,17 +109,6 @@ h1 span{color:var(--red)}
 .card-arrow{color:var(--subtle);font-size:14px;transition:transform .15s,color .15s}
 .card:hover .card-arrow{transform:translateX(3px);color:var(--text)}
 
-/* API */
-.api-wrap{border-top:1px solid var(--border);padding-top:18px;margin-bottom:24px}
-.api-label{font-size:10px;color:var(--subtle);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-.api-links{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
-.api-link{
-  font-size:11px;font-family:var(--mono);color:var(--muted);text-decoration:none;
-  background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 10px;
-  transition:color .15s,border-color .15s;
-}
-.api-link:hover{color:var(--text);border-color:#2D3748}
-
 /* QR CODE */
 .qr-section{
   background:var(--surface);border:1px solid var(--border);border-radius:14px;
@@ -142,6 +123,10 @@ h1 span{color:var(--red)}
 .qr-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
 .qr-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px}
 .qr-url{font-size:10px;font-family:var(--mono);color:var(--subtle);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 8px;display:inline-block;word-break:break-all}
+.qr-warning{display:none;background:#2E2410;border:1px solid #4D3D14;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:#F5A623;line-height:1.6;text-align:left}
+.qr-warning.show{display:block}
+.qr-warning b{color:#FFC94D}
+.qr-warning code{background:rgba(0,0,0,.25);padding:1px 5px;border-radius:3px;font-family:var(--mono)}
 
 /* FOOTER */
 .footer{font-size:10px;color:var(--subtle);font-family:var(--mono);line-height:1.8}
@@ -155,12 +140,7 @@ h1 span{color:var(--red)}
     <img src="/static/goodwe_logo.png" alt="GoodWe" class="logo">
   </div>
 
-  <div class="eyebrow fade-in fade-2">FIAP EV Challenge 2026 · Equipe 03</div>
   <h1 class="fade-in fade-2">ChargeGrid <span>Intelligence Hub</span></h1>
-  <p class="subtitle fade-in fade-2">
-    A camada comercial que transforma o GoodWe HCA&nbsp;G2 em um eletroposto completo —
-    tarifação dinâmica, controle de demanda e billing em tempo real.
-  </p>
 
   <div class="charger-hero fade-in fade-3">
     <div class="charger-glow"></div>
@@ -225,16 +205,16 @@ h1 span{color:var(--red)}
       <div class="qr-title">Experimente no seu celular</div>
       <div class="qr-desc">Escaneie para abrir o painel do usuário como se estivesse no totem do conector C-01.</div>
       <div class="qr-url" id="qr-url">carregando...</div>
-    </div>
-  </div>
-
-  <div class="api-wrap fade-in fade-7">
-    <div class="api-label">Endpoints da API</div>
-    <div class="api-links">
-      <a href="/api/conectores" class="api-link">/api/conectores</a>
-      <a href="/api/config" class="api-link">/api/config</a>
-      <a href="/api/financeiro" class="api-link">/api/financeiro</a>
-      <a href="/api/recomendacoes" class="api-link">/api/recomendacoes</a>
+      <div class="qr-warning" id="qr-warning">
+        <b>⚠ QR Code não vai funcionar em outro dispositivo assim.</b><br>
+        Você está acessando pelo endereço <code>localhost</code>, que só existe
+        dentro deste computador. Para o celular conseguir abrir, acesse esta
+        página pelo <b>IP da rede local</b> do seu computador — por exemplo
+        <code>http://192.168.0.X:5000</code> — e recarregue.<br>
+        Descubra seu IP com <code>ipconfig</code> (Windows) ou
+        <code>ifconfig</code> / <code>ip a</code> (Mac/Linux), procure por
+        "IPv4" na rede Wi-Fi, e garanta que o celular esteja na mesma rede.
+      </div>
     </div>
   </div>
 
@@ -285,6 +265,11 @@ function gerarQRCode() {
   qr.make();
   document.getElementById('qr-box').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
   document.getElementById('qr-url').textContent = url;
+
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    document.getElementById('qr-warning').classList.add('show');
+  }
 }
 gerarQRCode();
 </script>

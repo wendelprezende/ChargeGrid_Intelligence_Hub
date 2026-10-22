@@ -45,6 +45,57 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .idle-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:idleDot 1.4s ease-in-out infinite}
 .idle-dot:nth-child(2){animation-delay:.2s}
 .idle-dot:nth-child(3){animation-delay:.4s}
+
+/* WIZARD DE AUTO-INÍCIO DE SESSÃO */
+.idle-view{padding:40px 20px 32px}
+.wizard-steps{display:flex;align-items:center;gap:6px;margin-bottom:24px}
+.wizard-step-dot{width:24px;height:24px;border-radius:50%;background:var(--white);border:1px solid var(--border);color:var(--subtle);font-size:11px;font-family:var(--mono);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.wizard-step-dot.active{background:var(--red);border-color:var(--red);color:#fff}
+.wizard-step-dot.done{background:#0A2E1E;border-color:#134D32;color:var(--green)}
+.wizard-step-line{width:28px;height:1px;background:var(--border)}
+.wizard-panel{display:none;width:100%;text-align:center;animation:fadeSlideUp .35s ease}
+.wizard-panel.active{display:flex;flex-direction:column;align-items:center}
+
+.instruction-icon{width:64px;height:64px;border-radius:16px;background:var(--white);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--red);margin-bottom:18px}
+.wizard-title{font-size:16px;font-weight:500;color:var(--text);margin-bottom:6px}
+.wizard-desc{font-size:12px;color:var(--muted);line-height:1.6;max-width:280px;margin-bottom:22px}
+.wizard-conn-highlight{color:var(--red);font-weight:600;font-family:var(--mono)}
+
+.wizard-form{width:100%;text-align:left;margin-bottom:16px}
+.wizard-field{margin-bottom:12px}
+.wizard-label{font-size:11px;color:var(--muted);margin-bottom:5px;display:block}
+.wizard-input{
+  width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;
+  padding:12px 14px;font-size:13px;color:var(--text);font-family:var(--sans);
+  outline:none;transition:border-color .15s;min-height:44px;box-sizing:border-box;
+}
+.wizard-input:focus{border-color:#4D1A20}
+
+.wizard-actions{display:flex;gap:10px;width:100%}
+.wizard-btn{
+  flex:1;border-radius:9px;padding:13px;font-size:13px;font-weight:500;cursor:pointer;
+  border:none;font-family:var(--sans);transition:opacity .15s;min-height:44px;
+}
+.wizard-btn:hover{opacity:.9}
+.wizard-btn:disabled{opacity:.5;cursor:not-allowed}
+.wizard-btn-primary{background:var(--red);color:#fff}
+.wizard-btn-secondary{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.wizard-error{font-size:11px;color:var(--red);margin-top:2px;margin-bottom:10px;display:none}
+.wizard-error.show{display:block}
+
+/* SELEÇÃO DE CONECTOR */
+.conn-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-bottom:18px}
+.conn-card{
+  background:var(--white);border:1.5px solid var(--border);border-radius:12px;
+  padding:14px 10px;cursor:pointer;text-align:center;transition:border-color .15s,transform .15s;
+}
+.conn-card:hover{transform:translateY(-2px)}
+.conn-card.selected{border-color:var(--red);background:#1A0A0C}
+.conn-card-id{font-size:14px;font-weight:600;font-family:var(--mono);color:var(--text);margin-bottom:3px}
+.conn-card-power{font-size:10px;color:var(--green);font-family:var(--mono)}
+.conn-picker-empty{width:100%;text-align:center;padding:20px 10px;color:var(--muted);font-size:12px;line-height:1.6}
+.conn-picker-loading{width:100%;text-align:center;padding:20px 10px;color:var(--subtle);font-size:12px}
+.wizard-btn-refresh{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:9px;font-size:12px;cursor:pointer;width:100%;margin-top:4px}
 @keyframes idleDot{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .logo-img{height:30px;width:auto}
 
@@ -183,14 +234,73 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 <div class="main">
 
   <div id="idle-view" class="idle-view">
-    <div class="idle-icon-wrap">
-      <div class="idle-icon-glow"></div>
-      <svg class="idle-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+
+    <div class="wizard-steps">
+      <div class="wizard-step-dot active" id="dot-1">1</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-dot" id="dot-2">2</div>
+      <div class="wizard-step-line"></div>
+      <div class="wizard-step-dot" id="dot-3">3</div>
     </div>
-    <div class="idle-title">Aguardando nova sessão</div>
-    <div class="idle-desc">Este conector está disponível. Assim que uma nova recarga for iniciada, os dados aparecerão aqui automaticamente.</div>
-    <div class="idle-conn" id="idle-conn-tag">{{ conector_id }}</div>
-    <div class="idle-dots"><span class="idle-dot"></span><span class="idle-dot"></span><span class="idle-dot"></span></div>
+
+    <!-- PASSO 1 — escolha do conector disponível -->
+    <div class="wizard-panel active" id="wizard-step-1">
+      <div class="wizard-title">Escolha um conector</div>
+      <div class="wizard-desc">Selecione o conector onde seu veículo está estacionado.</div>
+
+      <div class="conn-picker" id="conn-picker">
+        <div class="conn-picker-loading">Carregando conectores disponíveis...</div>
+      </div>
+
+      <div class="wizard-actions">
+        <button class="wizard-btn wizard-btn-primary" id="wizard-btn-passo1" onclick="wizardIrPara(2)" disabled>Continuar</button>
+      </div>
+    </div>
+
+    <!-- PASSO 2 — instrução física de conexão -->
+    <div class="wizard-panel" id="wizard-step-2">
+      <div class="instruction-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div class="wizard-title">Pronto para carregar?</div>
+      <div class="wizard-desc">
+        Conecte o cabo do carregador ao seu veículo e à entrada do conector
+        <span class="wizard-conn-highlight" id="wizard-conn-nome">--</span>.
+        Depois, toque em continuar para informar seus dados.
+      </div>
+      <div class="wizard-actions">
+        <button class="wizard-btn wizard-btn-secondary" onclick="wizardIrPara(1)">Voltar</button>
+        <button class="wizard-btn wizard-btn-primary" onclick="wizardIrPara(3)">Já conectei — Continuar</button>
+      </div>
+    </div>
+
+    <!-- PASSO 3 — formulário de dados -->
+    <div class="wizard-panel" id="wizard-step-3">
+      <div class="wizard-title">Seus dados</div>
+      <div class="wizard-desc">Preencha para iniciar a sessão de recarga em <span id="wizard-conn-nome-2">--</span>.</div>
+
+      <div class="wizard-form">
+        <div class="wizard-field">
+          <label class="wizard-label">Nome</label>
+          <input class="wizard-input" id="w-nome" type="text" placeholder="Ex: Ana Clara">
+        </div>
+        <div class="wizard-field">
+          <label class="wizard-label">Veículo</label>
+          <input class="wizard-input" id="w-veiculo" type="text" placeholder="Ex: BYD Seal 2024">
+        </div>
+        <div class="wizard-field">
+          <label class="wizard-label">Placa</label>
+          <input class="wizard-input" id="w-placa" type="text" placeholder="Ex: ABC-1D23" maxlength="8">
+        </div>
+        <div class="wizard-error" id="wizard-error">Preencha todos os campos para continuar.</div>
+      </div>
+
+      <div class="wizard-actions">
+        <button class="wizard-btn wizard-btn-secondary" onclick="wizardIrPara(2)">Voltar</button>
+        <button class="wizard-btn wizard-btn-primary" id="wizard-btn-iniciar" onclick="wizardIniciarSessao()">Iniciar recarga</button>
+      </div>
+    </div>
+
   </div>
 
   <div id="active-view">
@@ -327,17 +437,152 @@ function badgeClass(nome) {
 }
 
 // ── Atualizar painel ──────────────────────────────────────────
+let _estaIdle = false; // evita resetar o wizard a cada poll repetido de 3s
+
 function mostrarIdle() {
   document.getElementById('idle-view').classList.add('show');
   document.getElementById('active-view').style.display = 'none';
+  if (!_estaIdle) {
+    wizardResetar(); // só reseta na TRANSIÇÃO para ocioso, não a cada poll
+    _estaIdle = true;
+  }
 }
 function mostrarAtivo() {
   document.getElementById('idle-view').classList.remove('show');
   document.getElementById('active-view').style.display = '';
+  _estaIdle = false;
 }
 function retomarPolling() {
   clearInterval(intervalo); // idempotente — evita empilhar múltiplos timers
   intervalo = setInterval(atualizar, 3000);
+}
+
+// ── Wizard de auto-início de sessão ────────────────────────────
+let _wizardConectorEscolhido = null;
+
+function wizardResetar() {
+  _wizardConectorEscolhido = null;
+  wizardIrPara(1);
+  document.getElementById('w-nome').value    = '';
+  document.getElementById('w-veiculo').value = '';
+  document.getElementById('w-placa').value   = '';
+  document.getElementById('wizard-error').classList.remove('show');
+  wizardCarregarConectores();
+}
+
+function wizardIrPara(passo) {
+  document.querySelectorAll('.wizard-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('wizard-step-' + passo).classList.add('active');
+
+  const dot1 = document.getElementById('dot-1');
+  const dot2 = document.getElementById('dot-2');
+  const dot3 = document.getElementById('dot-3');
+  dot1.className = 'wizard-step-dot' + (passo >= 2 ? ' done' : ' active');
+  dot2.className = 'wizard-step-dot' + (passo >= 3 ? ' done' : (passo === 2 ? ' active' : ''));
+  dot3.className = 'wizard-step-dot' + (passo === 3 ? ' active' : '');
+}
+
+// ── Passo 1: buscar e exibir conectores disponíveis ─────────────
+async function wizardCarregarConectores() {
+  const picker = document.getElementById('conn-picker');
+  const btnContinuar = document.getElementById('wizard-btn-passo1');
+  picker.innerHTML = '<div class="conn-picker-loading">Carregando conectores disponíveis...</div>';
+  btnContinuar.disabled = true;
+
+  try {
+    const d = await fetch('/api/conectores').then(r => r.json());
+    const disponiveis = d.conectores.filter(c => c.status_cod === 0 || c.status_cod === 1);
+
+    if (disponiveis.length === 0) {
+      picker.innerHTML = `
+        <div class="conn-picker-empty">
+          Nenhum conector disponível no momento. Aguarde alguém encerrar
+          a sessão ou tente novamente em instantes.
+        </div>
+        <button class="wizard-btn-refresh" onclick="wizardCarregarConectores()">↻ Atualizar lista</button>`;
+      return;
+    }
+
+    picker.innerHTML = disponiveis.map(c => `
+      <div class="conn-card" id="pick-${c.id}" onclick="wizardEscolherConector('${c.id}', ${c.pmax_kw})">
+        <div class="conn-card-id">${c.id}</div>
+        <div class="conn-card-power">até ${c.pmax_kw} kW</div>
+      </div>`).join('');
+
+    // Se o conector escolhido anteriormente não está mais disponível, limpa a seleção
+    if (_wizardConectorEscolhido && !disponiveis.find(c => c.id === _wizardConectorEscolhido)) {
+      _wizardConectorEscolhido = null;
+      btnContinuar.disabled = true;
+    } else if (_wizardConectorEscolhido) {
+      const el = document.getElementById('pick-' + _wizardConectorEscolhido);
+      if (el) el.classList.add('selected');
+      btnContinuar.disabled = false;
+    }
+  } catch (e) {
+    picker.innerHTML = '<div class="conn-picker-empty">Erro ao carregar conectores. Tente novamente.</div>';
+  }
+}
+
+function wizardEscolherConector(cid, pmax) {
+  _wizardConectorEscolhido = cid;
+  document.querySelectorAll('.conn-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('pick-' + cid).classList.add('selected');
+  document.getElementById('wizard-btn-passo1').disabled = false;
+  document.getElementById('wizard-conn-nome').textContent   = cid;
+  document.getElementById('wizard-conn-nome-2').textContent = cid;
+}
+
+async function wizardIniciarSessao() {
+  const nome    = document.getElementById('w-nome').value.trim();
+  const veiculo = document.getElementById('w-veiculo').value.trim();
+  const placa   = document.getElementById('w-placa').value.trim().toUpperCase();
+  const erroEl  = document.getElementById('wizard-error');
+
+  if (!_wizardConectorEscolhido) {
+    erroEl.textContent = 'Nenhum conector selecionado. Volte e escolha um.';
+    erroEl.classList.add('show');
+    return;
+  }
+  if (!nome || !veiculo || !placa) {
+    erroEl.textContent = 'Preencha todos os campos para continuar.';
+    erroEl.classList.add('show');
+    return;
+  }
+  erroEl.classList.remove('show');
+
+  const btn = document.getElementById('wizard-btn-iniciar');
+  btn.disabled = true;
+  btn.textContent = 'Iniciando...';
+
+  try {
+    const r = await fetch(`/api/sessao/iniciar/${_wizardConectorEscolhido}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nome, veiculo, placa }),
+    });
+    const d = await r.json();
+
+    if (!d.ok) {
+      erroEl.textContent = d.erro || 'Não foi possível iniciar a sessão. Tente novamente.';
+      erroEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Iniciar recarga';
+      // Alguém pode ter iniciado uma sessão nesse conector antes de nós — atualiza a lista
+      wizardIrPara(1);
+      wizardCarregarConectores();
+      return;
+    }
+
+    // Sucesso — redireciona para o painel do conector escolhido, que pode
+    // ser diferente do conector original desta URL.
+    window.location.href = '/usuario/' + _wizardConectorEscolhido;
+
+  } catch (e) {
+    erroEl.textContent = 'Erro de conexão. Tente novamente.';
+    erroEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Iniciar recarga';
+  }
 }
 
 async function atualizar() {
